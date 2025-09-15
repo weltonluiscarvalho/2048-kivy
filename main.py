@@ -78,7 +78,10 @@ class Board(FloatLayout):
 
 
     def merge_pieces(self, piece_to_merge, piece_merging):
-        pass
+        new_value = int(piece_to_merge.text) * 2
+        piece_to_merge.change_value(str(new_value))
+        self.positions[piece_merging.coords[0]][piece_merging.coords[1]] = None
+        self.remove_widget(piece_merging)
 
 
     def get_most_longest_free_position(self, position, direction):
@@ -88,24 +91,48 @@ class Board(FloatLayout):
         next_longest_free_position = position
 
         if direction is 'up':
-            for row in range(position_row, self.num_rows):
+            for row in range(position_row + 1, self.num_rows):
                 if not self.positions[row][position_column]:
                     next_longest_free_position = (row, position_column)
+                    continue
+                on_the_way_piece = self.positions[row][position_column]
+                this_piece = self.positions[position_row][position_column]
+                if on_the_way_piece.text == this_piece.text:
+                    self.merge_pieces(on_the_way_piece, this_piece)
+                    return False
 
         elif direction is 'down':
-            for row in range(position_row, -1, -1):
+            for row in range(position_row - 1, -1, -1):
                 if not self.positions[row][position_column]:
                     next_longest_free_position = (row, position_column)
+                    continue
+                on_the_way_piece = self.positions[row][position_column]
+                this_piece = self.positions[position_row][position_column]
+                if on_the_way_piece.text == this_piece.text:
+                    self.merge_pieces(on_the_way_piece, this_piece)
+                    return False
 
         elif direction is 'left':
-            for column in range(position_column, -1, -1):
+            for column in range(position_column - 1, -1, -1):
                 if not self.positions[position_row][column]:
                     next_longest_free_position = (position_row, column)
+                    continue
+                on_the_way_piece = self.positions[position_row][column]
+                this_piece = self.positions[position_row][position_column]
+                if on_the_way_piece.text == this_piece.text:
+                    self.merge_pieces(on_the_way_piece, this_piece)
+                    return False
 
         else:
-            for column in range(position_column, self.num_columns):
+            for column in range(position_column + 1, self.num_columns):
                 if not self.positions[position_row][column]:
                     next_longest_free_position = (position_row, column)
+                    continue
+                on_the_way_piece = self.positions[position_row][column]
+                this_piece = self.positions[position_row][position_column]
+                if on_the_way_piece.text == this_piece.text:
+                    self.merge_pieces(on_the_way_piece, this_piece)
+                    return False
 
         return next_longest_free_position if next_longest_free_position is not position else False
 
@@ -122,6 +149,7 @@ class Board(FloatLayout):
         for column in range(self.num_columns):
             if self.positions[row][column]:
                 pieces.append(self.positions[row][column])
+        print(pieces)
         return pieces
 
     def on_key_down(self, window, key, scancode, codepoint, modifiers):
@@ -164,9 +192,9 @@ class Board(FloatLayout):
     def go_up(self):
 
         for row in range(self.num_rows - 2, -1, -1):
-            this_row_pieces = self.get_pieces_at_row(row)
+            row_pieces = self.get_pieces_at_row(row)
 
-            for piece in this_row_pieces:
+            for piece in row_pieces:
                 new_position = self.get_most_longest_free_position(piece.coords, 'up')
                 if new_position:
                     self.set_piece_position(piece, new_position, animate=True)
@@ -225,8 +253,6 @@ class Board(FloatLayout):
             return
 
         position = choice(free_positions)
-
-        print(f'the free position choosen is {position}')
 
         row = position[0]
         column = position[1]
