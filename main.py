@@ -12,6 +12,20 @@ from random import randint, random, choice
 
 Window.size = (400, 700)
 
+color_map = {
+    "2": (200/255,165/255,245/255),
+    "4": (20/255,16/255,45/255),
+    "8": (230/255,126/255,45/255),
+    "16": (23/255,226/255,235/255),
+    "32": (188/255,2/255,9/255),
+    "64": (88/255,72/255,99/255),
+    "128": (203/255,152/255,199/255),
+    "256": (255/255,255/255,4/255),
+    "512": (25/255,55/255,244/255),
+    "1024": (154/255,200/255,43/255),
+    "2048": (14/255,0/255,243/255),
+}
+
 
 class Position(Widget):
 
@@ -31,9 +45,14 @@ class Piece(Label):
     color_bg = ColorProperty()
     coords = ListProperty()
 
-    def __init__(self, **kwargs):
-        self.color_bg = (random(), random(), random())
+    def __init__(self, value, **kwargs):
+        self.text = value
+        self.color_bg = color_map.get(value)
         super().__init__(**kwargs)
+
+    def change_value(self, new_value):
+        self.text = new_value
+        self.color_bg = color_map.get(new_value)
 
 class Board(FloatLayout):
 
@@ -58,67 +77,39 @@ class Board(FloatLayout):
         self.insert_piece()
 
 
-    def get_free_positions(self):
-
-        free_positions = []
-
-        for row, row_value in enumerate(self.positions):
-            for column, column_value in enumerate(row_value):
-                if not column_value:
-                    free_positions.append((row, column))
-
-        return free_positions
-
-    def get_most_upper_free_position(self, position):
-
-        next_longest_free_position = position
-
-        for row in range(position[0], self.num_rows):
-            if not self.positions[row][position[1]]:
-                next_longest_free_position = (row, position[1])
-
-        return next_longest_free_position
+    def merge_pieces(self, piece_to_merge, piece_merging):
+        pass
 
 
-    def get_most_lower_free_position(self, position):
-
-        next_longest_free_position = position
-
-        for row in range(position[0], -1, -1):
-            if not self.positions[row][position[1]]:
-                next_longest_free_position = (row, position[1])
-
-        return next_longest_free_position
-
-
-    def get_most_left_free_position(self, position):
+    def get_most_longest_free_position(self, position, direction):
 
         position_row = position[0]
         position_column = position[1]
-
         next_longest_free_position = position
 
-        for column in range(position_column, -1, -1):
-            if not self.positions[position_row][column]:
-                next_longest_free_position = (position_row, column)
+        if direction is 'up':
+            for row in range(position_row, self.num_rows):
+                if not self.positions[row][position_column]:
+                    next_longest_free_position = (row, position_column)
 
-        return next_longest_free_position
+        elif direction is 'down':
+            for row in range(position_row, -1, -1):
+                if not self.positions[row][position_column]:
+                    next_longest_free_position = (row, position_column)
 
+        elif direction is 'left':
+            for column in range(position_column, -1, -1):
+                if not self.positions[position_row][column]:
+                    next_longest_free_position = (position_row, column)
 
-    def get_most_right_free_position(self, position):
+        else:
+            for column in range(position_column, self.num_columns):
+                if not self.positions[position_row][column]:
+                    next_longest_free_position = (position_row, column)
 
-        position_row = position[0]
-        position_column = position[1]
+        return next_longest_free_position if next_longest_free_position is not position else False
 
-        next_longest_free_position = position
-
-        for column in range(position_column, self.num_columns):
-            if not self.positions[position_row][column]:
-                next_longest_free_position = (position_row, column)
-
-        return next_longest_free_position
         
-
     def get_pieces_at_column(self, column):
         pieces = []
         for row in range(self.num_rows):
@@ -148,7 +139,7 @@ class Board(FloatLayout):
             self.go_right()
 
 
-    def set_piece_position(self, piece, position):
+    def set_piece_position(self, piece, position, animate=False):
 
         piece_row = piece.coords[0]
         piece_column = piece.coords[1]
@@ -162,26 +153,11 @@ class Board(FloatLayout):
         pos_x = new_position_column * 75 + self.x
         pos_y = new_position_row * 75 + self.y
         piece.coords = position
-        piece.pos = (pos_x, pos_y)
-
-        self.positions[new_position_row][new_position_column] = piece
-
-    def animate_piece_position(self, piece, position):
-
-        piece_row = piece.coords[0]
-        piece_column = piece.coords[1]
-
-        new_position_row = position[0]
-        new_position_column = position[1]
-
-        self.positions[piece_row][piece_column] = None
-
-        ## move logic
-        pos_x = new_position_column * 75 + self.x
-        pos_y = new_position_row * 75 + self.y
-        piece.coords = position
-        anim = Animation(pos=(pos_x, pos_y), duration=.5)
-        anim.start(piece)
+        if animate:
+            anim = Animation(pos=(pos_x, pos_y), duration=.15)
+            anim.start(piece)
+        else:
+            piece.pos = (pos_x, pos_y)
 
         self.positions[new_position_row][new_position_column] = piece
 
@@ -191,11 +167,11 @@ class Board(FloatLayout):
             this_row_pieces = self.get_pieces_at_row(row)
 
             for piece in this_row_pieces:
-                new_position = self.get_most_upper_free_position(piece.coords)
-                # self.set_piece_position(piece, new_position)
-                self.animate_piece_position(piece, new_position)
+                new_position = self.get_most_longest_free_position(piece.coords, 'up')
+                if new_position:
+                    self.set_piece_position(piece, new_position, animate=True)
 
-        Clock.schedule_once(self.schedule_insert_piece, .5)
+        Clock.schedule_once(self.schedule_insert_piece, .3)
 
     def go_down(self):
 
@@ -203,10 +179,11 @@ class Board(FloatLayout):
             this_row_pieces = self.get_pieces_at_row(row)
 
             for piece in this_row_pieces:
-                new_position = self.get_most_lower_free_position(piece.coords)
-                self.animate_piece_position(piece, new_position)
+                new_position = self.get_most_longest_free_position(piece.coords, 'down')
+                if new_position:
+                    self.set_piece_position(piece, new_position, animate=True)
 
-        Clock.schedule_once(self.schedule_insert_piece, .5)
+        Clock.schedule_once(self.schedule_insert_piece, .3)
 
     def go_left(self):
 
@@ -214,10 +191,11 @@ class Board(FloatLayout):
             this_column_pieces = self.get_pieces_at_column(column)
 
             for piece in this_column_pieces:
-                new_position = self.get_most_left_free_position(piece.coords)
-                self.animate_piece_position(piece, new_position)
+                new_position = self.get_most_longest_free_position(piece.coords, 'left')
+                if new_position:
+                    self.set_piece_position(piece, new_position, animate=True)
 
-        Clock.schedule_once(self.schedule_insert_piece, .5)
+        Clock.schedule_once(self.schedule_insert_piece, .3)
 
     def go_right(self):
 
@@ -225,10 +203,11 @@ class Board(FloatLayout):
             this_column_pieces = self.get_pieces_at_column(column)
 
             for piece in this_column_pieces:
-                new_position = self.get_most_right_free_position(piece.coords)
-                self.animate_piece_position(piece, new_position)
+                new_position = self.get_most_longest_free_position(piece.coords, 'right')
+                if new_position:
+                    self.set_piece_position(piece, new_position, animate=True)
 
-        Clock.schedule_once(self.schedule_insert_piece, .5)
+        Clock.schedule_once(self.schedule_insert_piece, .3)
 
     def schedule_insert_piece(self, args):
         self.insert_piece()
@@ -246,7 +225,6 @@ class Board(FloatLayout):
             return
 
         position = choice(free_positions)
-        print(position)
 
         print(f'the free position choosen is {position}')
 
@@ -255,7 +233,7 @@ class Board(FloatLayout):
 
         pos_x = column * 75 + self.x
         pos_y = row * 75 + self.y
-        new_piece = Piece()
+        new_piece = Piece(value='2')
         new_piece.coords = (row, column)
         new_piece.pos = (pos_x, pos_y)
         new_piece.size_hint = None, None
