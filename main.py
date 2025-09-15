@@ -1,3 +1,4 @@
+from math import pi
 from kivy.animation import Animation
 from kivy.app import App
 from kivy.clock import Clock
@@ -7,8 +8,9 @@ from kivy.lang.builder import Builder
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
 from kivy.core.window import Window
-from kivy.properties import ListProperty, ColorProperty, NumericProperty, ObjectProperty
+from kivy.properties import ListProperty, ColorProperty, NumericProperty, BooleanProperty
 from random import randint, random, choice
+from functools import partial
 
 Window.size = (400, 700)
 
@@ -26,24 +28,10 @@ color_map = {
     "2048": (14/255,0/255,243/255),
 }
 
-
-class Position(Widget):
-
-    row = NumericProperty()
-    column = NumericProperty()
-
-    def __init__(self, row, column):
-        self.row = row
-        self.column = column
-        self.piece = None
-
-    def __repr__(self):
-        return f"Position(row={self.row}, column={self.column}, piece={self.piece})"
-
-
 class Piece(Label):
     color_bg = ColorProperty()
     coords = ListProperty()
+    has_already_merged = BooleanProperty
 
     def __init__(self, value, **kwargs):
         self.text = value
@@ -61,82 +49,21 @@ class Board(FloatLayout):
 
     def __init__(self, **kwargs):
         super(Board, self).__init__(**kwargs)
-        self.matrix_positions = []
         rows = []
         for i in range(4):
             column = []
             for j in range(4):
                 column.append(0)
-                self.matrix_positions.append(Position(row=i, column=j))
             rows.append(column)
         self.positions = rows
         Clock.schedule_once(self.start, -1)
         Window.bind(on_key_down=self.on_key_down)
 
+
     def start(self, *args):
         self.insert_piece()
 
 
-    def merge_pieces(self, piece_to_merge, piece_merging):
-        new_value = int(piece_to_merge.text) * 2
-        piece_to_merge.change_value(str(new_value))
-        self.positions[piece_merging.coords[0]][piece_merging.coords[1]] = None
-        self.remove_widget(piece_merging)
-
-
-    def get_most_longest_free_position(self, position, direction):
-
-        position_row = position[0]
-        position_column = position[1]
-        next_longest_free_position = position
-
-        if direction is 'up':
-            for row in range(position_row + 1, self.num_rows):
-                if not self.positions[row][position_column]:
-                    next_longest_free_position = (row, position_column)
-                    continue
-                on_the_way_piece = self.positions[row][position_column]
-                this_piece = self.positions[position_row][position_column]
-                if on_the_way_piece.text == this_piece.text:
-                    self.merge_pieces(on_the_way_piece, this_piece)
-                    return False
-
-        elif direction is 'down':
-            for row in range(position_row - 1, -1, -1):
-                if not self.positions[row][position_column]:
-                    next_longest_free_position = (row, position_column)
-                    continue
-                on_the_way_piece = self.positions[row][position_column]
-                this_piece = self.positions[position_row][position_column]
-                if on_the_way_piece.text == this_piece.text:
-                    self.merge_pieces(on_the_way_piece, this_piece)
-                    return False
-
-        elif direction is 'left':
-            for column in range(position_column - 1, -1, -1):
-                if not self.positions[position_row][column]:
-                    next_longest_free_position = (position_row, column)
-                    continue
-                on_the_way_piece = self.positions[position_row][column]
-                this_piece = self.positions[position_row][position_column]
-                if on_the_way_piece.text == this_piece.text:
-                    self.merge_pieces(on_the_way_piece, this_piece)
-                    return False
-
-        else:
-            for column in range(position_column + 1, self.num_columns):
-                if not self.positions[position_row][column]:
-                    next_longest_free_position = (position_row, column)
-                    continue
-                on_the_way_piece = self.positions[position_row][column]
-                this_piece = self.positions[position_row][position_column]
-                if on_the_way_piece.text == this_piece.text:
-                    self.merge_pieces(on_the_way_piece, this_piece)
-                    return False
-
-        return next_longest_free_position if next_longest_free_position is not position else False
-
-        
     def get_pieces_at_column(self, column):
         pieces = []
         for row in range(self.num_rows):
@@ -149,7 +76,6 @@ class Board(FloatLayout):
         for column in range(self.num_columns):
             if self.positions[row][column]:
                 pieces.append(self.positions[row][column])
-        print(pieces)
         return pieces
 
     def on_key_down(self, window, key, scancode, codepoint, modifiers):
@@ -167,7 +93,12 @@ class Board(FloatLayout):
             self.go_right()
 
 
-    def set_piece_position(self, piece, position, animate=False):
+    def merge_pieces(self, dt, piece_to_merge, piece_merging):
+        new_value = int(piece_to_merge.text) * 2
+        piece_to_merge.change_value(str(new_value))
+        self.remove_widget(piece_merging)
+
+    def set_piece_position(self, piece, position, animate=False, merge=False):
 
         piece_row = piece.coords[0]
         piece_column = piece.coords[1]
@@ -184,6 +115,11 @@ class Board(FloatLayout):
         if animate:
             anim = Animation(pos=(pos_x, pos_y), duration=.15)
             anim.start(piece)
+            if merge:
+                piece_to_merge = self.positions[new_position_row][new_position_column]
+                piece_to_merge.has_already_merged = True
+                Clock.schedule_once(partial(self.merge_pieces, piece_to_merge=piece_to_merge, piece_merging=piece), .15)
+                return
         else:
             piece.pos = (pos_x, pos_y)
 
@@ -195,45 +131,129 @@ class Board(FloatLayout):
             row_pieces = self.get_pieces_at_row(row)
 
             for piece in row_pieces:
-                new_position = self.get_most_longest_free_position(piece.coords, 'up')
-                if new_position:
-                    self.set_piece_position(piece, new_position, animate=True)
+
+                next_position = piece.coords
+                merge = False
+
+                for next_row in range(piece.coords[0] + 1, self.num_rows):
+
+                    piece_at_next_position = self.positions[next_row][piece.coords[1]]
+
+                    if piece_at_next_position:
+
+                        if piece.text == piece_at_next_position.text and not piece_at_next_position.has_already_merged:
+                            merge = True
+                            next_position = (next_row, piece.coords[1])
+                        break
+
+                    next_position = (next_row, piece.coords[1])
+
+                if piece.coords is not next_position:
+                    self.set_piece_position(piece, next_position, animate=True, merge=merge)
+
+        for row, row_value in enumerate(self.positions):
+            for column, column_value in enumerate(row_value):
+                if column_value:
+                    column_value.has_already_merged = False
 
         Clock.schedule_once(self.schedule_insert_piece, .3)
 
     def go_down(self):
 
         for row in range(self.num_rows):
-            this_row_pieces = self.get_pieces_at_row(row)
+            row_pieces = self.get_pieces_at_row(row)
 
-            for piece in this_row_pieces:
-                new_position = self.get_most_longest_free_position(piece.coords, 'down')
-                if new_position:
-                    self.set_piece_position(piece, new_position, animate=True)
+            for piece in row_pieces:
+
+                next_position = piece.coords
+                merge = False
+
+                for next_row in range(piece.coords[0] - 1, -1, -1):
+
+                    piece_at_next_position = self.positions[next_row][piece.coords[1]]
+
+                    if piece_at_next_position:
+
+                        if piece.text == piece_at_next_position.text and not piece_at_next_position.has_already_merged:
+                            merge = True
+                            next_position = (next_row, piece.coords[1])
+                        break
+
+                    next_position = (next_row, piece.coords[1])
+
+                if piece.coords is not next_position:
+                    self.set_piece_position(piece, next_position, animate=True, merge=merge)
+
+        for row, row_value in enumerate(self.positions):
+            for column, column_value in enumerate(row_value):
+                if column_value:
+                    column_value.has_already_merged = False
 
         Clock.schedule_once(self.schedule_insert_piece, .3)
 
     def go_left(self):
 
         for column in range(self.num_columns):
-            this_column_pieces = self.get_pieces_at_column(column)
+            column_pieces = self.get_pieces_at_column(column)
 
-            for piece in this_column_pieces:
-                new_position = self.get_most_longest_free_position(piece.coords, 'left')
-                if new_position:
-                    self.set_piece_position(piece, new_position, animate=True)
+            for piece in column_pieces:
+
+                next_position = piece.coords
+                merge = False
+
+                for next_column in range(piece.coords[1] - 1, -1, -1):
+
+                    piece_at_next_position = self.positions[piece.coords[0]][next_column]
+
+                    if piece_at_next_position:
+
+                        if piece.text == piece_at_next_position.text and not piece_at_next_position.has_already_merged:
+                            merge = True
+                            next_position = (piece.coords[0], next_column)
+                        break
+
+                    next_position = (piece.coords[0], next_column)
+
+                if piece.coords is not next_position:
+                    self.set_piece_position(piece, next_position, animate=True, merge=merge)
+
+        for row, row_value in enumerate(self.positions):
+            for column, column_value in enumerate(row_value):
+                if column_value:
+                    column_value.has_already_merged = False
 
         Clock.schedule_once(self.schedule_insert_piece, .3)
 
     def go_right(self):
 
         for column in range(self.num_columns - 2, -1, -1):
-            this_column_pieces = self.get_pieces_at_column(column)
+            column_pieces = self.get_pieces_at_column(column)
 
-            for piece in this_column_pieces:
-                new_position = self.get_most_longest_free_position(piece.coords, 'right')
-                if new_position:
-                    self.set_piece_position(piece, new_position, animate=True)
+            for piece in column_pieces:
+
+                next_position = piece.coords
+                merge = False
+
+                for next_column in range(piece.coords[1] + 1, self.num_columns):
+
+                    piece_at_next_position = self.positions[piece.coords[0]][next_column]
+
+                    if piece_at_next_position:
+
+                        if piece.text == piece_at_next_position.text and not piece_at_next_position.has_already_merged:
+                            merge = True
+                            next_position = (piece.coords[0], next_column)
+                        break
+
+                    next_position = (piece.coords[0], next_column)
+
+                if piece.coords is not next_position:
+                    self.set_piece_position(piece, next_position, animate=True, merge=merge)
+
+        for row, row_value in enumerate(self.positions):
+            for column, column_value in enumerate(row_value):
+                if column_value:
+                    column_value.has_already_merged = False
 
         Clock.schedule_once(self.schedule_insert_piece, .3)
 
