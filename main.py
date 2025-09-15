@@ -1,4 +1,5 @@
 from math import pi
+import os
 from kivy.animation import Animation
 from kivy.app import App
 from kivy.clock import Clock
@@ -31,7 +32,7 @@ color_map = {
 class Piece(Label):
     color_bg = ColorProperty()
     coords = ListProperty()
-    has_already_merged = BooleanProperty
+    has_already_merged = BooleanProperty(False)
 
     def __init__(self, value, **kwargs):
         self.text = value
@@ -41,6 +42,9 @@ class Piece(Label):
     def change_value(self, new_value):
         self.text = new_value
         self.color_bg = color_map.get(new_value)
+
+    def __repr__(self) -> str:
+        return self.text
 
 class Board(FloatLayout):
 
@@ -56,9 +60,16 @@ class Board(FloatLayout):
                 column.append(0)
             rows.append(column)
         self.positions = rows
+        self.in_animation = False
         Clock.schedule_once(self.start, -1)
         Window.bind(on_key_down=self.on_key_down)
 
+
+    def set_in_animation_false(self, *args):
+        self.in_animation = False
+
+    def set_in_animation_true(self, *args):
+        self.in_animation = True
 
     def start(self, *args):
         self.insert_piece()
@@ -80,17 +91,19 @@ class Board(FloatLayout):
 
     def on_key_down(self, window, key, scancode, codepoint, modifiers):
 
-        if key == 273:
-            self.go_up()
-            
-        if key == 274:
-            self.go_down()
+        if not self.in_animation:
 
-        if key == 276:
-            self.go_left()
+            if key == 273:
+                self.go_up()
+                
+            if key == 274:
+                self.go_down()
 
-        if key == 275:
-            self.go_right()
+            if key == 276:
+                self.go_left()
+
+            if key == 275:
+                self.go_right()
 
 
     def merge_pieces(self, dt, piece_to_merge, piece_merging):
@@ -100,37 +113,54 @@ class Board(FloatLayout):
 
     def set_piece_position(self, piece, position, animate=False, merge=False):
 
+        print(f'starting to set piece position')
+        print(f'the old position is {piece.coords}, and the new position is {position} with merge={merge}')
+
         piece_row = piece.coords[0]
         piece_column = piece.coords[1]
 
         new_position_row = position[0]
         new_position_column = position[1]
 
-        self.positions[piece_row][piece_column] = None
+        self.positions[piece_row][piece_column] = 0
 
         ## move logic
         pos_x = new_position_column * 75 + self.x
         pos_y = new_position_row * 75 + self.y
         piece.coords = position
-        if animate:
-            anim = Animation(pos=(pos_x, pos_y), duration=.15)
-            anim.start(piece)
-            if merge:
-                piece_to_merge = self.positions[new_position_row][new_position_column]
-                piece_to_merge.has_already_merged = True
-                Clock.schedule_once(partial(self.merge_pieces, piece_to_merge=piece_to_merge, piece_merging=piece), .15)
-                return
-        else:
-            piece.pos = (pos_x, pos_y)
+        anim = Animation(pos=(pos_x, pos_y), duration=.15)
+        # anim.bind(on_start=self.set_in_animation_true)
+        # anim.bind(on_complete=self.set_in_animation_false)
+        anim.start(piece)
+        if merge:
+            piece_to_merge = self.positions[new_position_row][new_position_column]
+            piece_to_merge.has_already_merged = True
+            Clock.schedule_once(partial(self.merge_pieces, piece_to_merge=piece_to_merge, piece_merging=piece), .15)
+            return
 
         self.positions[new_position_row][new_position_column] = piece
 
+    def print_board(self):
+        for row in range(self.num_rows - 1, -1, -1):
+            print(self.positions[row])
+
+        print()
+
     def go_up(self):
+        os.system('clear')
+        print('before moving up')
+        self.print_board()
+
+        piece_moved = False
 
         for row in range(self.num_rows - 2, -1, -1):
             row_pieces = self.get_pieces_at_row(row)
 
+            print(f'the pieces found in row {row} are {row_pieces}')
+
             for piece in row_pieces:
+
+                print(f'start to analize option for piece {piece} in position {piece.coords}')
 
                 next_position = piece.coords
                 merge = False
@@ -141,14 +171,23 @@ class Board(FloatLayout):
 
                     if piece_at_next_position:
 
+                        print(f'there is a piece {piece_at_next_position} at position ({next_row}, {piece.coords[1]})')
+
                         if piece.text == piece_at_next_position.text and not piece_at_next_position.has_already_merged:
+                            print(f'the value of piece {piece} and piece {piece_at_next_position} are equal, a merge must be performed including a new piece with double value at {piece_at_next_position.coords} position')
                             merge = True
                             next_position = (next_row, piece.coords[1])
+
+                        else:
+                            print(f'the value of the piece {piece} and the piece {piece_at_next_position} are diferent, so the piece {piece} cannot go any longer')
                         break
 
+                    print(f'the position in ({next_row}, {piece.coords[1]}) is free, so the piece {piece} could be placed at this position')
                     next_position = (next_row, piece.coords[1])
 
+                print(f'the possible moves were analized, and the position that the piece can be placed is {next_position}')
                 if piece.coords is not next_position:
+                    piece_moved = True
                     self.set_piece_position(piece, next_position, animate=True, merge=merge)
 
         for row, row_value in enumerate(self.positions):
@@ -156,15 +195,25 @@ class Board(FloatLayout):
                 if column_value:
                     column_value.has_already_merged = False
 
-        Clock.schedule_once(self.schedule_insert_piece, .3)
+        if piece_moved:
+            self.set_in_animation_true()
+            Clock.schedule_once(self.insert_piece, .15)
+            Clock.schedule_once(self.set_in_animation_false, .16)
 
     def go_down(self):
+        os.system('clear')
+        print('before move down')
+        self.print_board()
 
+        piece_moved = False
         for row in range(self.num_rows):
             row_pieces = self.get_pieces_at_row(row)
 
+            print(f'the pieces found in row {row} are {row_pieces}')
             for piece in row_pieces:
 
+                print()
+                print(f'start to analize option for piece {piece} in position {piece.coords}')
                 next_position = piece.coords
                 merge = False
 
@@ -173,15 +222,22 @@ class Board(FloatLayout):
                     piece_at_next_position = self.positions[next_row][piece.coords[1]]
 
                     if piece_at_next_position:
+                        print(f'there is a piece {piece_at_next_position} at position ({next_row}, {piece.coords[1]})')
 
                         if piece.text == piece_at_next_position.text and not piece_at_next_position.has_already_merged:
+                            print(f'the value of piece {piece} and piece {piece_at_next_position} are equal, a merge must be performed including a new piece with double value at {piece_at_next_position.coords} position')
                             merge = True
                             next_position = (next_row, piece.coords[1])
+                        else:
+                            print(f'the value of the piece {piece} and the piece {piece_at_next_position} are diferent, so the piece {piece} cannot go any longer')
                         break
 
+                    print(f'the position in ({next_row}, {piece.coords[1]}) is free, so the piece {piece} could be placed at this position')
                     next_position = (next_row, piece.coords[1])
 
+                print(f'the possible moves were analized, and the position that the piece can be placed is {next_position}')
                 if piece.coords is not next_position:
+                    piece_moved = True
                     self.set_piece_position(piece, next_position, animate=True, merge=merge)
 
         for row, row_value in enumerate(self.positions):
@@ -189,15 +245,24 @@ class Board(FloatLayout):
                 if column_value:
                     column_value.has_already_merged = False
 
-        Clock.schedule_once(self.schedule_insert_piece, .3)
+        if piece_moved:
+            self.set_in_animation_true()
+            Clock.schedule_once(self.insert_piece, .15)
+            Clock.schedule_once(self.set_in_animation_false, .16)
 
     def go_left(self):
+        os.system('clear')
+        print('before move left')
+        self.print_board()
 
+        piece_moved = False
         for column in range(self.num_columns):
             column_pieces = self.get_pieces_at_column(column)
 
+            print(f'the pieces found in column {column} are {column_pieces}')
             for piece in column_pieces:
 
+                print(f'start to analize option for piece {piece} in position {piece.coords}')
                 next_position = piece.coords
                 merge = False
 
@@ -206,15 +271,23 @@ class Board(FloatLayout):
                     piece_at_next_position = self.positions[piece.coords[0]][next_column]
 
                     if piece_at_next_position:
+                        print(f'there is a piece {piece_at_next_position} at position ({piece.coords[0]}, {next_column})')
 
                         if piece.text == piece_at_next_position.text and not piece_at_next_position.has_already_merged:
+                            print(f'the value of piece {piece} and piece {piece_at_next_position} are equal, a merge must be performed including a new piece with double value at {piece_at_next_position.coords} position')
                             merge = True
                             next_position = (piece.coords[0], next_column)
+
+                        else:
+                            print(f'the value of the piece {piece} and the piece {piece_at_next_position} are diferent, so the piece {piece} cannot go any longer')
                         break
 
+                    print(f'the position in ({piece.coords[0]}, {next_column}) is free, so the piece {piece} could be placed at this position')
                     next_position = (piece.coords[0], next_column)
 
+                print(f'the possible moves were analized, and the position that the piece can be placed is {next_position}')
                 if piece.coords is not next_position:
+                    piece_moved = True
                     self.set_piece_position(piece, next_position, animate=True, merge=merge)
 
         for row, row_value in enumerate(self.positions):
@@ -222,15 +295,24 @@ class Board(FloatLayout):
                 if column_value:
                     column_value.has_already_merged = False
 
-        Clock.schedule_once(self.schedule_insert_piece, .3)
+        if piece_moved:
+            self.set_in_animation_true()
+            Clock.schedule_once(self.insert_piece, .15)
+            Clock.schedule_once(self.set_in_animation_false, .16)
 
     def go_right(self):
+        os.system('clear')
+        print('before move right')
+        self.print_board()
 
+        piece_moved = False
         for column in range(self.num_columns - 2, -1, -1):
             column_pieces = self.get_pieces_at_column(column)
 
+            print(f'the pieces found in column {column} are {column_pieces}')
             for piece in column_pieces:
 
+                print(f'start to analize option for piece {piece} in position {piece.coords}')
                 next_position = piece.coords
                 merge = False
 
@@ -239,15 +321,23 @@ class Board(FloatLayout):
                     piece_at_next_position = self.positions[piece.coords[0]][next_column]
 
                     if piece_at_next_position:
+                        print(f'there is a piece {piece_at_next_position} at position ({piece.coords[0]}, {next_column})')
 
                         if piece.text == piece_at_next_position.text and not piece_at_next_position.has_already_merged:
+                            print(f'the value of piece {piece} and piece {piece_at_next_position} are equal, a merge must be performed including a new piece with double value at {piece_at_next_position.coords} position')
                             merge = True
                             next_position = (piece.coords[0], next_column)
+
+                        else:
+                            print(f'the value of the piece {piece} and the piece {piece_at_next_position} are diferent, so the piece {piece} cannot go any longer')
                         break
 
+                    print(f'the position in ({piece.coords[0]}, {next_column}) is free, so the piece {piece} could be placed at this position')
                     next_position = (piece.coords[0], next_column)
 
+                print(f'the possible moves were analized, and the position that the piece can be placed is {next_position}')
                 if piece.coords is not next_position:
+                    piece_moved = True
                     self.set_piece_position(piece, next_position, animate=True, merge=merge)
 
         for row, row_value in enumerate(self.positions):
@@ -255,12 +345,12 @@ class Board(FloatLayout):
                 if column_value:
                     column_value.has_already_merged = False
 
-        Clock.schedule_once(self.schedule_insert_piece, .3)
+        if piece_moved:
+            self.set_in_animation_true()
+            Clock.schedule_once(self.insert_piece, .15)
+            Clock.schedule_once(self.set_in_animation_false, .16)
 
-    def schedule_insert_piece(self, args):
-        self.insert_piece()
-
-    def insert_piece(self):
+    def insert_piece(self, *args):
         free_positions = []
 
         for row, row_value in enumerate(self.positions):
@@ -286,6 +376,11 @@ class Board(FloatLayout):
         new_piece.size = 75, 75
         self.add_widget(new_piece)
         self.positions[row][column] = new_piece
+
+        print()
+        print('after changes')
+        self.print_board()
+
 
 class GameApp(App):
     pass
