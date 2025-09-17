@@ -46,11 +46,19 @@ GameScreenManager:
                 MDRelativeLayout:
                     MDLabel:
                         id: label
+                        text: 'MEME'
+                        adaptive_size: True
+                        font_style: "H4"
+                        color: "white"
+                        pos_hint: {'center_y': .70, 'center_x': .5}
+                        bold: True
+                    MDLabel:
+                        id: label
                         text: '2048'
                         adaptive_size: True
                         font_style: "H3"
                         color: "white"
-                        pos_hint: {'center_y': .5, 'center_x': .5}
+                        pos_hint: {'center_y': .40, 'center_x': .5}
                         bold: True
 
             MDCard:
@@ -91,22 +99,67 @@ GameScreenManager:
 
             Board:
                 id: board
-                pos_hint: {"center_x": .5, "center_y": .45}
-                size_hint: .90, None
+                pos_hint: {"center_x": .5, "center_y": .4}
+                size_hint: .80, None
                 height: self.width
+                canvas.before:
+                    Color:
+                        rgb: 150/255,150/255,150/255
+                    Rectangle:
+                        pos: -self.height * .0075, -self.width * .0075
+                        size: self.width * 1.015, self.width * 1.015
                 canvas:
                     Color:
                         rgba: .70, .70, .70, 1
                     Rectangle:
-                        pos: self.pos
+                        # pos: self.pos
                         size: self.width, self.width
 
 <Piece>
     canvas.before:
+        # Color:
+        #     rgb: 100/255,100/255,100/255
+        # Rectangle:
+        #     pos: self.pos
+        #     size: self.size
         Color:
             rgb: self.color_bg
+        RoundedRectangle:
+            pos: self.x + self.height * .03, self.y + self.width * .03
+            size: self.width * .94, self.height * .94
+            radius: [8]
+    text: "2"
+    font_size: "30sp"
+    bold: True
+    font: 'clear-sans'
+    color: '#6e512d'
+
+
+<PositionRectangle>
+    size_hint: .25, .25 
+    canvas.before:
+        Color:
+            rgb: 150/255,150/255,150/255
         Rectangle:
             pos: self.pos
             size: self.size
-    text: "2"
-    font_size: "30sp"
+        Color:
+            rgb: 180/255,180/255,180/255
+        RoundedRectangle:
+            pos: self.x + self.height * .03, self.y + self.width * .03
+            size: self.width * .94, self.height * .94
+            radius: [8]
+
+
+# <RoundedRectangle@Widget>
+#     round_ratio: .5
+#     round_circle_diameter: self.height * self.round_ratio 
+#     canvas:
+#         Ellipse:
+#             pos: self.x + self.height - self.round_circle_diameter, self.y 
+#         Ellipse:
+#             pos: self.x, self.y 
+#         Ellipse:
+#             pos: self.x + self.height - self.round_circle_diameter, self.y + self.width - self.round_circle_diameter 
+#         Ellipse:
+#             pos: self.x, self.y + self.width - self.round_circle_diameter 

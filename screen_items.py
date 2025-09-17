@@ -1,4 +1,5 @@
-from kivy.uix.floatlayout import FloatLayout
+from kivymd.uix.relativelayout import MDRelativeLayout
+from kivy.uix.widget import Widget
 from kivy.uix.label import Label
 from kivy.properties import NumericProperty, BooleanProperty, ListProperty, ColorProperty
 from kivy.core.window import Window
@@ -9,18 +10,58 @@ from functools import partial
 import os
 
 color_map = {
-    "2": (200/255,165/255,245/255),
-    "4": (20/255,16/255,45/255),
-    "8": (230/255,126/255,45/255),
-    "16": (23/255,226/255,235/255),
-    "32": (188/255,2/255,9/255),
-    "64": (88/255,72/255,99/255),
-    "128": (203/255,152/255,199/255),
-    "256": (255/255,255/255,4/255),
-    "512": (25/255,55/255,244/255),
-    "1024": (154/255,200/255,43/255),
-    "2048": (14/255,0/255,243/255),
+    "2": {
+        "font": "#401d01",
+        "bg": "#e3e0d8", 
+    },
+    "4": {
+        "font": "#401d01",
+        "bg": "#e6d7b1", 
+    },
+    "8": {
+        "font": "white",
+        "bg": "#f5ba7a", 
+    },
+    "16": {
+        "font": "white",
+        "bg": "#f5a045", 
+    },
+    "32": {
+        "font": "white",
+        "bg": "#f58b7a", 
+    },
+    "64": {
+        "font": "white",
+        "bg": "#f55d45", 
+    },
+    "128": {
+        "font": "white",
+        "bg": "#f2e279", 
+    },
+    "256": {
+        "font": "white",
+        "bg": "#f0db56", 
+    },
+    "512": {
+        "font": "white",
+        "bg": "#f2d93d", 
+    },
+    "1024": {
+        "font": "white",
+        "bg": "#fadc1e", 
+    },
+    "2048": {
+        "font": "white",
+        "bg": "#ffdd05", 
+    },
+    "4096": {
+        "font": "white",
+        "bg": "#323232", 
+    },
 }
+
+class PositionRectangle(Widget):
+    pass
 
 class Piece(Label):
     color_bg = ColorProperty()
@@ -29,17 +70,20 @@ class Piece(Label):
 
     def __init__(self, value, **kwargs):
         self.text = value
-        self.color_bg = color_map.get(value)
+        self.color_bg = color_map.get(value).get('bg', 'white')
+        self.color = color_map.get(value).get('font','black')
         super().__init__(**kwargs)
 
     def change_value(self, new_value):
         self.text = new_value
-        self.color_bg = color_map.get(new_value)
+        map_value = color_map.get(new_value)
+        self.color_bg = map_value.get('bg', 'white')
+        self.color = map_value.get('font','black')
 
     def __repr__(self) -> str:
         return self.text
 
-class Board(FloatLayout):
+class Board(MDRelativeLayout):
 
     num_rows = NumericProperty(4)
     num_columns = NumericProperty(4)
@@ -66,7 +110,17 @@ class Board(FloatLayout):
         self.in_animation = True
 
     def start(self, *args):
+        self.insert_black_rectangles()
         self.insert_piece()
+
+
+    def insert_black_rectangles(self):
+        for row, row_value in enumerate(self.positions):
+            for column, column_value in enumerate(row_value):
+                pox = column * self.width / 4
+                poy = row * self.width / 4
+                r = PositionRectangle(pos=(pox, poy))
+                self.add_widget(r)
 
 
     def get_pieces_at_column(self, column):
@@ -120,8 +174,8 @@ class Board(FloatLayout):
         self.positions[piece_row][piece_column] = 0
 
         ## move logic
-        pos_x = new_position_column * self.width / 4 + self.x
-        pos_y = new_position_row * self.width / 4 + self.y
+        pos_x = new_position_column * self.width / 4
+        pos_y = new_position_row * self.width / 4
         piece.coords = position
         anim = Animation(pos=(pos_x, pos_y), duration=.15)
         # anim.bind(on_start=self.set_in_animation_true)
@@ -362,13 +416,13 @@ class Board(FloatLayout):
         row = position[0]
         column = position[1]
 
-        pos_x = column * self.width / 4 + self.x
-        pos_y = row * self.width / 4 + self.y
+        pos_x = column * self.width / 4
+        pos_y = row * self.width / 4
         new_piece = Piece(value='2')
         new_piece.coords = (row, column)
         new_piece.pos = (pos_x, pos_y)
-        new_piece.size_hint = None, None
-        new_piece.size = self.width / 4, self.width / 4
+        new_piece.size_hint = .25, .25
+        # new_piece.size = self.width / 4, self.width / 4
         self.add_widget(new_piece)
         self.positions[row][column] = new_piece
 
