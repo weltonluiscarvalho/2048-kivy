@@ -1,4 +1,7 @@
+from threading import Thread
+from kivy.core import audio
 from kivymd.uix.relativelayout import MDRelativeLayout
+from kivy.core.audio import SoundLoader
 from kivy.uix.widget import Widget
 from kivy.uix.label import Label
 from kivy.properties import NumericProperty, BooleanProperty, ListProperty, ColorProperty
@@ -99,6 +102,12 @@ class Board(MDRelativeLayout):
             rows.append(column)
         self.positions = rows
         self.in_animation = False
+        self.playing_sound = False
+        self.ele_gosta = SoundLoader.load('sounds/ele_gosta.mp3')
+        self.ui = SoundLoader.load('sounds/ui.mp3')
+        self.nossa = SoundLoader.load('sounds/nossa.mp3')
+        self.cavalo = SoundLoader.load('sounds/cavalo.mp3')
+        self.danca_gatinho = SoundLoader.load('sounds/danca_gatinho.mp3')
         Clock.schedule_once(self.start, -1)
         Window.bind(on_key_down=self.on_key_down)
 
@@ -108,6 +117,12 @@ class Board(MDRelativeLayout):
 
     def set_in_animation_true(self, *args):
         self.in_animation = True
+        
+    def set_playing_sound_false(self, *args):
+        self.playing_sound = False
+
+    def set_playing_sound_true(self, *args):
+        self.playing_sound = True
 
     def start(self, *args):
         self.insert_black_rectangles()
@@ -153,17 +168,23 @@ class Board(MDRelativeLayout):
             if key == 275:
                 self.go_right()
 
-
     def merge_pieces(self, dt, piece_to_merge, piece_merging):
         new_value = int(piece_to_merge.text) * 2
         piece_to_merge.change_value(str(new_value))
         self.score += int(piece_merging.text)
+        if piece_merging.text == "8":
+            if self.cavalo:
+                self.cavalo.play()
+                self.set_playing_sound_true()
+                self.cavalo.bind(on_stop=self.set_playing_sound_false)
+        elif int(piece_merging.text) >= 16:
+            if self.nossa:
+                self.nossa.play()
+                self.set_playing_sound_true()
+                self.nossa.bind(on_stop=self.set_playing_sound_false)
         self.remove_widget(piece_merging)
 
     def set_piece_position(self, piece, position, animate=False, merge=False):
-
-        print(f'starting to set piece position')
-        print(f'the old position is {piece.coords}, and the new position is {position} with merge={merge}')
 
         piece_row = piece.coords[0]
         piece_column = piece.coords[1]
@@ -196,20 +217,13 @@ class Board(MDRelativeLayout):
         print()
 
     def go_up(self):
-        os.system('clear')
-        print('before moving up')
-        self.print_board()
 
         piece_moved = False
 
         for row in range(self.num_rows - 2, -1, -1):
             row_pieces = self.get_pieces_at_row(row)
 
-            print(f'the pieces found in row {row} are {row_pieces}')
-
             for piece in row_pieces:
-
-                print(f'start to analize option for piece {piece} in position {piece.coords}')
 
                 next_position = piece.coords
                 merge = False
@@ -220,21 +234,13 @@ class Board(MDRelativeLayout):
 
                     if piece_at_next_position:
 
-                        print(f'there is a piece {piece_at_next_position} at position ({next_row}, {piece.coords[1]})')
-
                         if piece.text == piece_at_next_position.text and not piece_at_next_position.has_already_merged:
-                            print(f'the value of piece {piece} and piece {piece_at_next_position} are equal, a merge must be performed including a new piece with double value at {piece_at_next_position.coords} position')
                             merge = True
                             next_position = (next_row, piece.coords[1])
-
-                        else:
-                            print(f'the value of the piece {piece} and the piece {piece_at_next_position} are diferent, so the piece {piece} cannot go any longer')
                         break
 
-                    print(f'the position in ({next_row}, {piece.coords[1]}) is free, so the piece {piece} could be placed at this position')
                     next_position = (next_row, piece.coords[1])
 
-                print(f'the possible moves were analized, and the position that the piece can be placed is {next_position}')
                 if piece.coords is not next_position:
                     piece_moved = True
                     self.set_piece_position(piece, next_position, animate=True, merge=merge)
@@ -250,19 +256,13 @@ class Board(MDRelativeLayout):
             Clock.schedule_once(self.set_in_animation_false, .16)
 
     def go_down(self):
-        os.system('clear')
-        print('before move down')
-        self.print_board()
 
         piece_moved = False
         for row in range(self.num_rows):
             row_pieces = self.get_pieces_at_row(row)
 
-            print(f'the pieces found in row {row} are {row_pieces}')
             for piece in row_pieces:
 
-                print()
-                print(f'start to analize option for piece {piece} in position {piece.coords}')
                 next_position = piece.coords
                 merge = False
 
@@ -271,20 +271,14 @@ class Board(MDRelativeLayout):
                     piece_at_next_position = self.positions[next_row][piece.coords[1]]
 
                     if piece_at_next_position:
-                        print(f'there is a piece {piece_at_next_position} at position ({next_row}, {piece.coords[1]})')
 
                         if piece.text == piece_at_next_position.text and not piece_at_next_position.has_already_merged:
-                            print(f'the value of piece {piece} and piece {piece_at_next_position} are equal, a merge must be performed including a new piece with double value at {piece_at_next_position.coords} position')
                             merge = True
                             next_position = (next_row, piece.coords[1])
-                        else:
-                            print(f'the value of the piece {piece} and the piece {piece_at_next_position} are diferent, so the piece {piece} cannot go any longer')
                         break
 
-                    print(f'the position in ({next_row}, {piece.coords[1]}) is free, so the piece {piece} could be placed at this position')
                     next_position = (next_row, piece.coords[1])
 
-                print(f'the possible moves were analized, and the position that the piece can be placed is {next_position}')
                 if piece.coords is not next_position:
                     piece_moved = True
                     self.set_piece_position(piece, next_position, animate=True, merge=merge)
@@ -300,18 +294,13 @@ class Board(MDRelativeLayout):
             Clock.schedule_once(self.set_in_animation_false, .16)
 
     def go_left(self):
-        os.system('clear')
-        print('before move left')
-        self.print_board()
 
         piece_moved = False
         for column in range(self.num_columns):
             column_pieces = self.get_pieces_at_column(column)
 
-            print(f'the pieces found in column {column} are {column_pieces}')
             for piece in column_pieces:
 
-                print(f'start to analize option for piece {piece} in position {piece.coords}')
                 next_position = piece.coords
                 merge = False
 
@@ -320,21 +309,15 @@ class Board(MDRelativeLayout):
                     piece_at_next_position = self.positions[piece.coords[0]][next_column]
 
                     if piece_at_next_position:
-                        print(f'there is a piece {piece_at_next_position} at position ({piece.coords[0]}, {next_column})')
 
                         if piece.text == piece_at_next_position.text and not piece_at_next_position.has_already_merged:
-                            print(f'the value of piece {piece} and piece {piece_at_next_position} are equal, a merge must be performed including a new piece with double value at {piece_at_next_position.coords} position')
                             merge = True
                             next_position = (piece.coords[0], next_column)
 
-                        else:
-                            print(f'the value of the piece {piece} and the piece {piece_at_next_position} are diferent, so the piece {piece} cannot go any longer')
                         break
 
-                    print(f'the position in ({piece.coords[0]}, {next_column}) is free, so the piece {piece} could be placed at this position')
                     next_position = (piece.coords[0], next_column)
 
-                print(f'the possible moves were analized, and the position that the piece can be placed is {next_position}')
                 if piece.coords is not next_position:
                     piece_moved = True
                     self.set_piece_position(piece, next_position, animate=True, merge=merge)
@@ -350,18 +333,13 @@ class Board(MDRelativeLayout):
             Clock.schedule_once(self.set_in_animation_false, .16)
 
     def go_right(self):
-        os.system('clear')
-        print('before move right')
-        self.print_board()
 
         piece_moved = False
         for column in range(self.num_columns - 2, -1, -1):
             column_pieces = self.get_pieces_at_column(column)
 
-            print(f'the pieces found in column {column} are {column_pieces}')
             for piece in column_pieces:
 
-                print(f'start to analize option for piece {piece} in position {piece.coords}')
                 next_position = piece.coords
                 merge = False
 
@@ -370,21 +348,15 @@ class Board(MDRelativeLayout):
                     piece_at_next_position = self.positions[piece.coords[0]][next_column]
 
                     if piece_at_next_position:
-                        print(f'there is a piece {piece_at_next_position} at position ({piece.coords[0]}, {next_column})')
 
                         if piece.text == piece_at_next_position.text and not piece_at_next_position.has_already_merged:
-                            print(f'the value of piece {piece} and piece {piece_at_next_position} are equal, a merge must be performed including a new piece with double value at {piece_at_next_position.coords} position')
                             merge = True
                             next_position = (piece.coords[0], next_column)
 
-                        else:
-                            print(f'the value of the piece {piece} and the piece {piece_at_next_position} are diferent, so the piece {piece} cannot go any longer')
                         break
 
-                    print(f'the position in ({piece.coords[0]}, {next_column}) is free, so the piece {piece} could be placed at this position')
                     next_position = (piece.coords[0], next_column)
 
-                print(f'the possible moves were analized, and the position that the piece can be placed is {next_position}')
                 if piece.coords is not next_position:
                     piece_moved = True
                     self.set_piece_position(piece, next_position, animate=True, merge=merge)
@@ -408,7 +380,6 @@ class Board(MDRelativeLayout):
                     free_positions.append((row, column))
 
         if not free_positions:
-            print("there is not possible_positions, you lose")
             return
 
         position = choice(free_positions)
@@ -426,6 +397,3 @@ class Board(MDRelativeLayout):
         self.add_widget(new_piece)
         self.positions[row][column] = new_piece
 
-        print()
-        print('after changes')
-        self.print_board()
