@@ -77,7 +77,7 @@ GameScreenManager:
                         bold: True
                     MDLabel:
                         id: best_value
-                        text: '0'
+                        text: str(board.best)
                         adaptive_size: True
                         font_style: "H5"
                         halign: "center"
@@ -112,16 +112,10 @@ GameScreenManager:
                     Color:
                         rgba: .70, .70, .70, 1
                     Rectangle:
-                        # pos: self.pos
                         size: self.width, self.width
 
 <Piece>
     canvas.before:
-        # Color:
-        #     rgb: 100/255,100/255,100/255
-        # Rectangle:
-        #     pos: self.pos
-        #     size: self.size
         Color:
             rgb: self.color_bg
         RoundedRectangle:
