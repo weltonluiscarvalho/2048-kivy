@@ -1,5 +1,4 @@
-from threading import Thread
-from kivy.core import audio
+from kivy.uix.modalview import ModalView
 from kivymd.uix.relativelayout import MDRelativeLayout
 from kivy.core.audio import SoundLoader
 from kivy.uix.widget import Widget
@@ -10,7 +9,6 @@ from kivy.clock import Clock
 from kivy.animation import Animation
 from random import choice
 from functools import partial
-import os
 
 color_map = {
     "2": {
@@ -63,8 +61,8 @@ color_map = {
     },
 }
 
-class GameOverWidget(Widget):
-    pass
+class GameOverPopup(ModalView):
+    score = NumericProperty(0)
 
 class PositionRectangle(Widget):
     pass
@@ -105,11 +103,14 @@ class Board(MDRelativeLayout):
             rows.append(column)
         self.positions = rows
         self.in_animation = False
+        self.in_game = True
         self.ele_gosta = SoundLoader.load('sounds/ele_gosta.mp3')
         self.ui = SoundLoader.load('sounds/ui.mp3')
         self.nossa = SoundLoader.load('sounds/nossa.mp3')
         self.cavalo = SoundLoader.load('sounds/cavalo.mp3')
         self.danca_gatinho = SoundLoader.load('sounds/danca_gatinho.mp3')
+        self.popup = GameOverPopup()
+        self.popup.ids.new_game_button.bind(on_release=self.reset_game)
         Clock.schedule_once(self.start, -1)
         Window.bind(on_key_down=self.on_key_down)
 
@@ -122,6 +123,19 @@ class Board(MDRelativeLayout):
     def start(self, *args):
         self.insert_black_rectangles()
         self.insert_piece()
+
+
+    def reset_game(self, *args):
+        self.score = 0
+        for row, row_value in enumerate(self.positions):
+            for column, piece in enumerate(row_value):
+                if piece:
+                    self.positions[row][column] = 0
+                    self.remove_widget(piece)
+
+        self.insert_piece()
+        self.popup.dismiss()
+        self.in_game = True
 
 
     def can_merge_somepiece(self):
@@ -199,7 +213,7 @@ class Board(MDRelativeLayout):
 
     def on_key_down(self, window, key, scancode, codepoint, modifiers):
 
-        if not self.in_animation:
+        if not self.in_animation and self.in_game:
 
             if key == 273:
                 self.go_up()
@@ -415,6 +429,9 @@ class Board(MDRelativeLayout):
             Clock.schedule_once(self.set_in_animation_false, .16)
 
     def insert_piece(self, *args):
+        # self.in_game = False
+        # self.popup.score = self.score
+        # self.popup.open()
         free_positions = []
 
         for row, row_value in enumerate(self.positions):
@@ -437,7 +454,6 @@ class Board(MDRelativeLayout):
         new_piece.coords = (row, column)
         new_piece.pos = (pos_x, pos_y)
         new_piece.size_hint = .25, .25
-        # new_piece.size = self.width / 4, self.width / 4
         self.add_widget(new_piece)
         self.positions[row][column] = new_piece
 
@@ -450,4 +466,7 @@ class Board(MDRelativeLayout):
 
         if not free_positions and not self.can_merge_somepiece():
             print('there is no free positions, neither merge to be performed, you lose')
+            self.in_game = False
+            self.popup.score = self.score
+            self.popup.open()
             return

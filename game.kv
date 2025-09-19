@@ -151,16 +151,41 @@ GameScreenManager:
             radius: [8]
 
 
-# <GameOverWidget>
-#     size_hint: 1, 1
-#     canvas.before:
-#         Color:
-#             rgba: 0, 0, 0, .5
-#
-#         Rectangle:
-#             pos: self.pos
-#             size: self.size
-#
-#     MDButton:
-#         text: "New Game"
-#         on_touch_up: 
+<GameOverPopup>
+    id: game_over_popup
+    size_hint: 1, 1
+    background_color: 0, 0, 0, .5
+
+    MDRelativeLayout:
+        MDLabel:
+            text: "You Lose"
+            halign: 'center'
+            font_style: "H2"
+            pos_hint: {'center_x': .5, 'center_y': .7}
+            theme_text_color: "Custom"
+            text_color: 1, 1, 1, 1
+
+        MDLabel:
+            text: f'score {game_over_popup.score}'
+            halign: "center"
+            font_style: "H3"
+            pos_hint: {'center_x': .5, 'center_y': .6}
+            theme_text_color: "Custom"
+            text_color: 1, 1, 1, 1
+
+        MDRaisedButton:
+            id: new_game_button
+            text: "New Game"
+            pos_hint: {'center_x': .5, 'center_y': .17}
+            anchor_y: 'bottom'
+            md_bg_color: "#f5ba7a"
+            text_color: "black"
+
+        MDRaisedButton:
+            id: quit_game_button
+            text: "Quit"
+            pos_hint: {'center_x': .5, 'center_y': .1}
+            anchor_y: 'bottom'
+            on_release: app.stop() 
+            md_bg_color: "#f5ba7a"
+            text_color: "black"
