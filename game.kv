@@ -151,15 +151,16 @@ GameScreenManager:
             radius: [8]
 
 
-# <RoundedRectangle@Widget>
-#     round_ratio: .5
-#     round_circle_diameter: self.height * self.round_ratio 
-#     canvas:
-#         Ellipse:
-#             pos: self.x + self.height - self.round_circle_diameter, self.y 
-#         Ellipse:
-#             pos: self.x, self.y 
-#         Ellipse:
-#             pos: self.x + self.height - self.round_circle_diameter, self.y + self.width - self.round_circle_diameter 
-#         Ellipse:
-#             pos: self.x, self.y + self.width - self.round_circle_diameter 
+# <GameOverWidget>
+#     size_hint: 1, 1
+#     canvas.before:
+#         Color:
+#             rgba: 0, 0, 0, .5
+#
+#         Rectangle:
+#             pos: self.pos
+#             size: self.size
+#
+#     MDButton:
+#         text: "New Game"
+#         on_touch_up: 

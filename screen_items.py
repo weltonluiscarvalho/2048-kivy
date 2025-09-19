@@ -63,6 +63,9 @@ color_map = {
     },
 }
 
+class GameOverWidget(Widget):
+    pass
+
 class PositionRectangle(Widget):
     pass
 
@@ -102,7 +105,6 @@ class Board(MDRelativeLayout):
             rows.append(column)
         self.positions = rows
         self.in_animation = False
-        self.playing_sound = False
         self.ele_gosta = SoundLoader.load('sounds/ele_gosta.mp3')
         self.ui = SoundLoader.load('sounds/ui.mp3')
         self.nossa = SoundLoader.load('sounds/nossa.mp3')
@@ -111,22 +113,65 @@ class Board(MDRelativeLayout):
         Clock.schedule_once(self.start, -1)
         Window.bind(on_key_down=self.on_key_down)
 
-
     def set_in_animation_false(self, *args):
         self.in_animation = False
 
     def set_in_animation_true(self, *args):
         self.in_animation = True
         
-    def set_playing_sound_false(self, *args):
-        self.playing_sound = False
-
-    def set_playing_sound_true(self, *args):
-        self.playing_sound = True
-
     def start(self, *args):
         self.insert_black_rectangles()
         self.insert_piece()
+
+
+    def can_merge_somepiece(self):
+
+        for row, row_value in enumerate(self.positions):
+
+            print(f'analizing row {row} which have {row_value} pieces')
+            for column, piece in enumerate(row_value):
+                print(f'analizing piece {piece} in position {piece.coords}')
+                if piece and self.can_piece_merge(piece):
+                    print(f'a merge is possible for piece {piece} in position {piece.coords}')
+                    return True
+
+        return False
+
+
+    def can_piece_merge(self, piece):
+
+        if piece.coords[0] > 0:
+            lower_piece = self.positions[piece.coords[0] - 1][piece.coords[1]]
+            print(f'comparing piece {piece} with piece {lower_piece} in position {lower_piece.coords}')
+
+            if lower_piece and lower_piece.text == piece.text:
+                return True
+
+        if piece.coords[0] < 3:
+            upon_piece = self.positions[piece.coords[0] + 1][piece.coords[1]]
+            print(f'comparing piece {piece} with piece {upon_piece} in position {upon_piece.coords}')
+
+            if upon_piece and upon_piece.text == piece.text:
+                return True
+
+        if piece.coords[1] > 0:
+            left_piece = self.positions[piece.coords[0]][piece.coords[1] - 1]
+            print(f'comparing piece {piece} with piece {left_piece} in position {left_piece.coords}')
+
+            if left_piece and left_piece.text == piece.text:
+                return True
+
+        if piece.coords[1] < 3:
+            right_piece = self.positions[piece.coords[0]][piece.coords[1] + 1]
+            print(f'comparing piece {piece} with piece {right_piece} in position {right_piece.coords}')
+
+            if right_piece and right_piece.text == piece.text:
+                return True
+
+        print(f'piece {piece} in position {piece.coords} is not able to perform a merge')
+        self.print_board()
+        return False
+
 
 
     def insert_black_rectangles(self):
@@ -175,13 +220,11 @@ class Board(MDRelativeLayout):
         if piece_merging.text == "8":
             if self.cavalo:
                 self.cavalo.play()
-                self.set_playing_sound_true()
-                self.cavalo.bind(on_stop=self.set_playing_sound_false)
+                self.cavalo.seek(0)
         elif int(piece_merging.text) >= 16:
             if self.nossa:
                 self.nossa.play()
-                self.set_playing_sound_true()
-                self.nossa.bind(on_stop=self.set_playing_sound_false)
+                self.nossa.seek(0)
         self.remove_widget(piece_merging)
 
     def set_piece_position(self, piece, position, animate=False, merge=False):
@@ -380,6 +423,7 @@ class Board(MDRelativeLayout):
                     free_positions.append((row, column))
 
         if not free_positions:
+            print('there is no free positions, you lose')
             return
 
         position = choice(free_positions)
@@ -397,3 +441,13 @@ class Board(MDRelativeLayout):
         self.add_widget(new_piece)
         self.positions[row][column] = new_piece
 
+        free_positions = []
+
+        for row, row_value in enumerate(self.positions):
+            for column, value in enumerate(row_value):
+                if not value:
+                    free_positions.append((row, column))
+
+        if not free_positions and not self.can_merge_somepiece():
+            print('there is no free positions, neither merge to be performed, you lose')
+            return
