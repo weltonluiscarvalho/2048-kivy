@@ -1,4 +1,6 @@
+from math import ceil
 from kivy.uix.modalview import ModalView
+from kivy.storage.jsonstore import JsonStore
 from kivymd.uix.relativelayout import MDRelativeLayout
 from kivy.core.audio import SoundLoader
 from kivy.uix.widget import Widget
@@ -8,7 +10,11 @@ from kivy.core.window import Window
 from kivy.clock import Clock
 from kivy.animation import Animation
 from random import choice
-from functools import partial
+from functools import partial, reduce
+from datetime import datetime
+
+
+scores = JsonStore('scores.json')
 
 color_map = {
     "2": {
@@ -92,6 +98,7 @@ class Board(MDRelativeLayout):
     num_rows = NumericProperty(4)
     num_columns = NumericProperty(4)
     score = NumericProperty(0)
+    best = NumericProperty(0)
 
     def __init__(self, **kwargs):
         super(Board, self).__init__(**kwargs)
@@ -111,6 +118,8 @@ class Board(MDRelativeLayout):
         self.danca_gatinho = SoundLoader.load('sounds/danca_gatinho.mp3')
         self.popup = GameOverPopup()
         self.popup.ids.new_game_button.bind(on_release=self.reset_game)
+        best = reduce(max, map(lambda timestamp: scores.get(timestamp)['score'], scores.keys()), 0)
+        self.best = best
         Clock.schedule_once(self.start, -1)
         Window.bind(on_key_down=self.on_key_down)
 
@@ -136,6 +145,8 @@ class Board(MDRelativeLayout):
         self.insert_piece()
         self.popup.dismiss()
         self.in_game = True
+        best = reduce(max, map(lambda timestamp: scores.get(timestamp)['score'], scores.keys()), 0)
+        self.best = best
 
 
     def can_merge_somepiece(self):
@@ -156,34 +167,28 @@ class Board(MDRelativeLayout):
 
         if piece.coords[0] > 0:
             lower_piece = self.positions[piece.coords[0] - 1][piece.coords[1]]
-            print(f'comparing piece {piece} with piece {lower_piece} in position {lower_piece.coords}')
 
             if lower_piece and lower_piece.text == piece.text:
                 return True
 
         if piece.coords[0] < 3:
             upon_piece = self.positions[piece.coords[0] + 1][piece.coords[1]]
-            print(f'comparing piece {piece} with piece {upon_piece} in position {upon_piece.coords}')
 
             if upon_piece and upon_piece.text == piece.text:
                 return True
 
         if piece.coords[1] > 0:
             left_piece = self.positions[piece.coords[0]][piece.coords[1] - 1]
-            print(f'comparing piece {piece} with piece {left_piece} in position {left_piece.coords}')
 
             if left_piece and left_piece.text == piece.text:
                 return True
 
         if piece.coords[1] < 3:
             right_piece = self.positions[piece.coords[0]][piece.coords[1] + 1]
-            print(f'comparing piece {piece} with piece {right_piece} in position {right_piece.coords}')
 
             if right_piece and right_piece.text == piece.text:
                 return True
 
-        print(f'piece {piece} in position {piece.coords} is not able to perform a merge')
-        self.print_board()
         return False
 
 
@@ -464,9 +469,13 @@ class Board(MDRelativeLayout):
                 if not value:
                     free_positions.append((row, column))
 
+        if self.score > self.best:
+            self.best = self.score
+
         if not free_positions and not self.can_merge_somepiece():
-            print('there is no free positions, neither merge to be performed, you lose')
             self.in_game = False
             self.popup.score = self.score
+            scores.put(ceil(int(datetime.now().timestamp())), score=self.score)
             self.popup.open()
             return
+
