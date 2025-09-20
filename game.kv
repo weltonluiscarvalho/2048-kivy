@@ -97,6 +97,10 @@ GameScreenManager:
                         icon_color: "white"
                         icon_size: '35sp'
 
+            MDRaisedButton:
+                text: "undo"
+                pos_hint: {"center_x": .5, "center_y": .7}
+                on_release: board.undo_move()
             Board:
                 id: board
                 pos_hint: {"center_x": .5, "center_y": .4}
@@ -122,11 +126,9 @@ GameScreenManager:
             pos: self.x + self.height * .03, self.y + self.width * .03
             size: self.width * .94, self.height * .94
             radius: [8]
-    text: "2"
     font_size: "30sp"
     bold: True
     font: 'clear-sans'
-    color: '#6e512d'
 
 
 <PositionRectangle>
