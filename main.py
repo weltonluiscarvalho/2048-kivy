@@ -16,4 +16,6 @@ if __name__ == "__main__":
                        fn_bold='fonts/ClearSans-Bold.ttf', 
                        fn_bolditalic='fonts/ClearSans-BoldItalic.ttf',
                        fn_italic='fonts/ClearSans-Italic.ttf')
-    GameApp().run()
+    app = GameApp()
+    print(app.user_data_dir)
+    app.run()

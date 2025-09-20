@@ -1,0 +1,45 @@
+{
+    "moves": [
+        {
+            "move_number": 1,
+            "direction": "up",
+            "move_type": "do",
+            "board_before" : [[0, 0, 0, 2], [4, 8, 0, 2], [4, 8, 0, 2], [4, 8, 0, 2]],
+            "board_after" : [[0, 0, 0, 2], [4, 8, 0, 2], [4, 8, 0, 2], [4, 8, 0, 2]],
+            "merges": [
+                {
+                    "old_value": "2",
+                    "new_value": "4",
+                    "piece_merging_position": {
+                        "row": 0,
+                        "column": 0
+                    },
+                    "piece_merged_position": {
+                        "row": 0,
+                        "column": 0
+                    }
+                }
+            ],
+            "pieces_moved": [
+                {
+                    "piece_value": 4,
+                    "old_position": {
+                        "row": 0,
+                        "column": 1
+                    },
+                    "new_position": {
+                        "row": 2,
+                        "column": 0
+                    }
+                }
+            ],
+            "created_or_removed_piece": {
+                "value": 2,
+                "position": {
+                    "row": 3,
+                    "column": 2
+                }
+            }
+        }
+    ]
+}
