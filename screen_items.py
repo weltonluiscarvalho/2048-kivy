@@ -1,4 +1,6 @@
+import enum
 from math import ceil
+from kivy.app import App
 from kivy.uix.modalview import ModalView
 from kivy.storage.jsonstore import JsonStore
 from kivymd.uix.relativelayout import MDRelativeLayout
@@ -118,6 +120,9 @@ class Board(MDRelativeLayout):
         self.danca_gatinho = SoundLoader.load('sounds/danca_gatinho.mp3')
         self.popup = GameOverPopup()
         self.popup.ids.new_game_button.bind(on_release=self.reset_game)
+        self.popup.ids.quit_game_button.bind(on_release=self.quit_game)
+        self.moves = []
+        self.moves_count = 0
         best = reduce(max, map(lambda timestamp: scores.get(timestamp)['score'], scores.keys()), 0)
         self.best = best
         Clock.schedule_once(self.start, -1)
@@ -134,7 +139,14 @@ class Board(MDRelativeLayout):
         self.insert_piece()
 
 
+    def quit_game(self, *args):
+        scores.put(ceil(int(datetime.now().timestamp())), score=self.score, moves=self.moves)
+        app = App.get_running_app()
+        app.stop()
+
+
     def reset_game(self, *args):
+        scores.put(ceil(int(datetime.now().timestamp())), score=self.score, moves=self.moves)
         self.score = 0
         for row, row_value in enumerate(self.positions):
             for column, piece in enumerate(row_value):
@@ -232,6 +244,24 @@ class Board(MDRelativeLayout):
             if key == 275:
                 self.go_right()
 
+    def unmerge_piece(self, piece_to_unmerge, unmerged_piece_new_position):
+        row = piece_to_unmerge.coords[0]
+        column = piece_to_unmerge.coords[1]
+
+        pos_x = column * self.width / 4
+        pos_y = row * self.width / 4
+        new_piece = Piece(value=str(int(piece_to_unmerge.text) / 2))
+        new_piece.coords = (row, column)
+        new_piece.pos = (pos_x, pos_y)
+        new_piece.size_hint = .25, .25
+        self.add_widget(new_piece)
+        self.positions[unmerged_piece_new_position[0]][unmerged_piece_new_position[1]] = new_piece 
+
+        self.score -= int(new_piece.text)
+
+        piece_to_unmerge.change_value(new_piece.text)
+        
+
     def merge_pieces(self, dt, piece_to_merge, piece_merging):
         new_value = int(piece_to_merge.text) * 2
         piece_to_merge.change_value(str(new_value))
@@ -261,8 +291,6 @@ class Board(MDRelativeLayout):
         pos_y = new_position_row * self.width / 4
         piece.coords = position
         anim = Animation(pos=(pos_x, pos_y), duration=.15)
-        # anim.bind(on_start=self.set_in_animation_true)
-        # anim.bind(on_complete=self.set_in_animation_false)
         anim.start(piece)
         if merge:
             piece_to_merge = self.positions[new_position_row][new_position_column]
@@ -279,6 +307,15 @@ class Board(MDRelativeLayout):
         print()
 
     def go_up(self):
+
+        board_before = []
+        for row, row_value in enumerate(self.positions):
+            board_before_column = []
+            for piece in row_value:
+                 board_before_column.append(int(piece.text) if piece else 0)
+            board_before.append(board_before_column)
+        merged_pieces = []
+        moved_pieces = []
 
         piece_moved = False
 
@@ -305,6 +342,36 @@ class Board(MDRelativeLayout):
 
                 if piece.coords is not next_position:
                     piece_moved = True
+                    if merge:
+                        new_merge = {
+                            "old_value": int(piece.text),
+                            "new_value": int(piece.text) * 2,
+                            "piece_merging_position": {
+                                "row": piece.coords[0],
+                                "column": piece.coords[1]
+                            },
+                            "piece_merged_position": {
+                                "row": next_position[0],
+                                "column": next_position[1]
+                            }
+                        }
+
+                        merged_pieces.append(new_merge)
+                    else:
+                        new_move = {
+                            "piece_value": int(piece.text),
+                            "old_position": {
+                                "row": piece.coords[0],
+                                "column": piece.coords[1]
+                            },
+                            "new_position": {
+                                "row": next_position[0],
+                                "column": next_position[1]
+                            }
+                        }
+
+                        moved_pieces.append(new_move)
+
                     self.set_piece_position(piece, next_position, animate=True, merge=merge)
 
         for row, row_value in enumerate(self.positions):
@@ -314,10 +381,43 @@ class Board(MDRelativeLayout):
 
         if piece_moved:
             self.set_in_animation_true()
-            Clock.schedule_once(self.insert_piece, .15)
-            Clock.schedule_once(self.set_in_animation_false, .16)
+            new_piece = self.insert_piece()
+            self.moves_count += 1
+            board_after = []
+            for row, row_value in enumerate(self.positions):
+                board_after_column = []
+                for piece in row_value:
+                      board_after_column.append(int(piece.text) if piece else 0)
+                board_after.append(board_after_column)
+            self.moves.append({
+                "move_number": self.moves_count,
+                "direction": "up",
+                "move_type": "do",
+                "board_before": board_before,
+                "board_after": board_after,
+                "merges": merged_pieces,
+                "pieces_moved": moved_pieces,
+                "created_or_removed_piece": {
+                    "value": int(new_piece.text),
+                    "position": {
+                        "row": new_piece.coords[0],
+                        "column": new_piece.coords[1]
+                    }
+                }
+            })
+
+
 
     def go_down(self):
+
+        board_before = []
+        for row, row_value in enumerate(self.positions):
+            board_before_column = []
+            for piece in row_value:
+                 board_before_column.append(int(piece.text) if piece else 0)
+            board_before.append(board_before_column)
+        merged_pieces = []
+        moved_pieces = []
 
         piece_moved = False
         for row in range(self.num_rows):
@@ -343,6 +443,35 @@ class Board(MDRelativeLayout):
 
                 if piece.coords is not next_position:
                     piece_moved = True
+                    if merge:
+                        new_merge = {
+                            "old_value": int(piece.text),
+                            "new_value": int(piece.text) * 2,
+                            "piece_merging_position": {
+                                "row": piece.coords[0],
+                                "column": piece.coords[1]
+                            },
+                            "piece_merged_position": {
+                                "row": next_position[0],
+                                "column": next_position[1]
+                            }
+                        }
+
+                        merged_pieces.append(new_merge)
+                    else:
+                        new_move = {
+                            "piece_value": int(piece.text),
+                            "old_position": {
+                                "row": piece.coords[0],
+                                "column": piece.coords[1]
+                            },
+                            "new_position": {
+                                "row": next_position[0],
+                                "column": next_position[1]
+                            }
+                        }
+
+                        moved_pieces.append(new_move)
                     self.set_piece_position(piece, next_position, animate=True, merge=merge)
 
         for row, row_value in enumerate(self.positions):
@@ -352,10 +481,41 @@ class Board(MDRelativeLayout):
 
         if piece_moved:
             self.set_in_animation_true()
-            Clock.schedule_once(self.insert_piece, .15)
-            Clock.schedule_once(self.set_in_animation_false, .16)
+            new_piece = self.insert_piece()
+            self.moves_count += 1
+            board_after = []
+            for row, row_value in enumerate(self.positions):
+                board_after_column = []
+                for piece in row_value:
+                      board_after_column.append(int(piece.text) if piece else 0)
+                board_after.append(board_after_column)
+            self.moves.append({
+                "move_number": self.moves_count,
+                "direction": "down",
+                "move_type": "do",
+                "board_before": board_before,
+                "board_after": board_after,
+                "merges": merged_pieces,
+                "pieces_moved": moved_pieces,
+                "created_or_removed_piece": {
+                    "value": int(new_piece.text),
+                    "position": {
+                        "row": new_piece.coords[0],
+                        "column": new_piece.coords[1]
+                    }
+                }
+            })
 
     def go_left(self):
+
+        board_before = []
+        for row, row_value in enumerate(self.positions):
+            board_before_column = []
+            for piece in row_value:
+                 board_before_column.append(int(piece.text) if piece else 0)
+            board_before.append(board_before_column)
+        merged_pieces = []
+        moved_pieces = []
 
         piece_moved = False
         for column in range(self.num_columns):
@@ -382,6 +542,35 @@ class Board(MDRelativeLayout):
 
                 if piece.coords is not next_position:
                     piece_moved = True
+                    if merge:
+                        new_merge = {
+                            "old_value": int(piece.text),
+                            "new_value": int(piece.text) * 2,
+                            "piece_merging_position": {
+                                "row": piece.coords[0],
+                                "column": piece.coords[1]
+                            },
+                            "piece_merged_position": {
+                                "row": next_position[0],
+                                "column": next_position[1]
+                            }
+                        }
+
+                        merged_pieces.append(new_merge)
+                    else:
+                        new_move = {
+                            "piece_value": int(piece.text),
+                            "old_position": {
+                                "row": piece.coords[0],
+                                "column": piece.coords[1]
+                            },
+                            "new_position": {
+                                "row": next_position[0],
+                                "column": next_position[1]
+                            }
+                        }
+
+                        moved_pieces.append(new_move)
                     self.set_piece_position(piece, next_position, animate=True, merge=merge)
 
         for row, row_value in enumerate(self.positions):
@@ -391,10 +580,41 @@ class Board(MDRelativeLayout):
 
         if piece_moved:
             self.set_in_animation_true()
-            Clock.schedule_once(self.insert_piece, .15)
-            Clock.schedule_once(self.set_in_animation_false, .16)
+            new_piece = self.insert_piece()
+            self.moves_count += 1
+            board_after = []
+            for row, row_value in enumerate(self.positions):
+                board_after_column = []
+                for piece in row_value:
+                      board_after_column.append(int(piece.text) if piece else 0)
+                board_after.append(board_after_column)
+            self.moves.append({
+                "move_number": self.moves_count,
+                "direction": "left",
+                "move_type": "do",
+                "board_before": board_before,
+                "board_after": board_after,
+                "merges": merged_pieces,
+                "pieces_moved": moved_pieces,
+                "created_or_removed_piece": {
+                    "value": int(new_piece.text),
+                    "position": {
+                        "row": new_piece.coords[0],
+                        "column": new_piece.coords[1]
+                    }
+                }
+            })
 
     def go_right(self):
+
+        board_before = []
+        for row, row_value in enumerate(self.positions):
+            board_before_column = []
+            for piece in row_value:
+                 board_before_column.append(int(piece.text) if piece else 0)
+            board_before.append(board_before_column)
+        merged_pieces = []
+        moved_pieces = []
 
         piece_moved = False
         for column in range(self.num_columns - 2, -1, -1):
@@ -421,6 +641,35 @@ class Board(MDRelativeLayout):
 
                 if piece.coords is not next_position:
                     piece_moved = True
+                    if merge:
+                        new_merge = {
+                            "old_value": int(piece.text),
+                            "new_value": int(piece.text) * 2,
+                            "piece_merging_position": {
+                                "row": piece.coords[0],
+                                "column": piece.coords[1]
+                            },
+                            "piece_merged_position": {
+                                "row": next_position[0],
+                                "column": next_position[1]
+                            }
+                        }
+
+                        merged_pieces.append(new_merge)
+                    else:
+                        new_move = {
+                            "piece_value": int(piece.text),
+                            "old_position": {
+                                "row": piece.coords[0],
+                                "column": piece.coords[1]
+                            },
+                            "new_position": {
+                                "row": next_position[0],
+                                "column": next_position[1]
+                            }
+                        }
+
+                        moved_pieces.append(new_move)
                     self.set_piece_position(piece, next_position, animate=True, merge=merge)
 
         for row, row_value in enumerate(self.positions):
@@ -430,8 +679,30 @@ class Board(MDRelativeLayout):
 
         if piece_moved:
             self.set_in_animation_true()
-            Clock.schedule_once(self.insert_piece, .15)
-            Clock.schedule_once(self.set_in_animation_false, .16)
+            new_piece = self.insert_piece()
+            self.moves_count += 1
+            board_after = []
+            for row, row_value in enumerate(self.positions):
+                board_after_column = []
+                for piece in row_value:
+                      board_after_column.append(int(piece.text) if piece else 0)
+                board_after.append(board_after_column)
+            self.moves.append({
+                "move_number": self.moves_count,
+                "direction": "right",
+                "move_type": "do",
+                "board_before": board_before,
+                "board_after": board_after,
+                "merges": merged_pieces,
+                "pieces_moved": moved_pieces,
+                "created_or_removed_piece": {
+                    "value": int(new_piece.text),
+                    "position": {
+                        "row": new_piece.coords[0],
+                        "column": new_piece.coords[1]
+                    }
+                }
+            })
 
     def insert_piece(self, *args):
         # self.in_game = False
@@ -444,10 +715,6 @@ class Board(MDRelativeLayout):
                 if not value:
                     free_positions.append((row, column))
 
-        if not free_positions:
-            print('there is no free positions, you lose')
-            return
-
         position = choice(free_positions)
 
         row = position[0]
@@ -459,8 +726,13 @@ class Board(MDRelativeLayout):
         new_piece.coords = (row, column)
         new_piece.pos = (pos_x, pos_y)
         new_piece.size_hint = .25, .25
-        self.add_widget(new_piece)
         self.positions[row][column] = new_piece
+        Clock.schedule_once(partial(self.insert_piece_2, new_piece), .15)
+        Clock.schedule_once(self.set_in_animation_false, .16)
+        return new_piece
+
+    def insert_piece_2(self, new_piece, *args):
+        self.add_widget(new_piece)
 
         free_positions = []
 
@@ -475,7 +747,7 @@ class Board(MDRelativeLayout):
         if not free_positions and not self.can_merge_somepiece():
             self.in_game = False
             self.popup.score = self.score
-            scores.put(ceil(int(datetime.now().timestamp())), score=self.score)
             self.popup.open()
             return
+
 
