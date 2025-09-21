@@ -127,6 +127,7 @@ class Board(MDRelativeLayout):
         self.do_moves_count = 0
         self.undo_moves_count = 0
         self.sequential_undo_moves = 0
+        self.previous_do_move = 0
         best = reduce(max, map(lambda timestamp: scores.get(timestamp)['score'], scores.keys()), 0)
         self.best = best
         Clock.schedule_once(self.start, -1)
@@ -299,8 +300,14 @@ class Board(MDRelativeLayout):
         print(f'do moves performed = {self.do_moves_count}')
         print(f'sequential undo moves perfomed = {self.sequential_undo_moves}')
         
+        moves_able_to_undo = filter(lambda move: move.get("move_type") == "do" and move.get("do_move_number") == self.do_moves_count, self.moves)
+        # print(f'moves able to undo')
+        # for move in moves_able_to_undo:
+        #     print(move)
+        move_to_undo_number = reduce(max, map(lambda move: move.get("move_number"), moves_able_to_undo), 0)
+        print(move_to_undo_number)
         for move in self.moves:
-            if move.get("move_type") == "do" and move.get("do_move_number") == self.do_moves_count - self.sequential_undo_moves:
+            if move.get("move_number") == move_to_undo_number:
                 move_to_undo = move
                 break
             
@@ -337,7 +344,7 @@ class Board(MDRelativeLayout):
 
             else:
                 line_type = "column"
-                
+
             for line in range(range_initial_value, range_final_value, range_step_value):
 
                 line_moved_pieces = [piece for piece in move_to_undo.get("pieces_moved") if piece.get("new_position").get(line_type) == line]
@@ -403,8 +410,9 @@ class Board(MDRelativeLayout):
                     self.print_board()
 
 
-            self.sequential_undo_moves += 1
+            # self.sequential_undo_moves += 1
             self.undo_moves_count += 1
+            self.do_moves_count -= 1
             self.moves_count += 1
             self.set_in_animation_true()
             board_before, board_after = move_to_undo.get("board_after"), move_to_undo.get("board_before")
@@ -482,6 +490,9 @@ class Board(MDRelativeLayout):
                 }
             }
         }
+
+        print(f'move did')
+        print(move)
 
         self.moves.append(move)
 
