@@ -97,10 +97,20 @@ GameScreenManager:
                         icon_color: "white"
                         icon_size: '35sp'
 
-            MDRaisedButton:
-                text: "undo"
+            MDFloatingActionButton:
+                icon: "undo"
+                # text: "undo"
+                adaptive_size: True
+                size_hint:.1,None
+                height: self.width
+                type: "standard"
                 pos_hint: {"center_x": .5, "center_y": .7}
+                theme_icon_color: "Custom"
+                md_bg_color: "#e6d7b1"
+                text_color: "#6e512d"
+                line_color: "black"
                 on_release: board.undo_move()
+
             Board:
                 id: board
                 pos_hint: {"center_x": .5, "center_y": .4}
@@ -169,18 +179,34 @@ GameScreenManager:
             theme_text_color: "Custom"
             text_color: 1, 1, 1, 1
 
+        MDFloatingActionButton:
+            id: undo_button
+            icon: "undo"
+            adaptive_size: True
+            size_hint:.1,None
+            height: self.width
+            type: "standard"
+            pos_hint: {"center_x": .5, "center_y": .24}
+            theme_icon_color: "Custom"
+            md_bg_color: "#e6d7b1"
+            text_color: "#6e512d"
+            line_color: "black"
+            # on_release: board.undo_move()
+
         MDRaisedButton:
             id: new_game_button
             text: "New Game"
             pos_hint: {'center_x': .5, 'center_y': .17}
             anchor_y: 'bottom'
-            md_bg_color: "#f5ba7a"
-            text_color: "black"
+            theme_icon_color: "Custom"
+            md_bg_color: "#e6d7b1"
+            text_color: "#6e512d"
 
         MDRaisedButton:
             id: quit_game_button
             text: "Quit"
             pos_hint: {'center_x': .5, 'center_y': .1}
             anchor_y: 'bottom'
-            md_bg_color: "#f5ba7a"
-            text_color: "black"
+            theme_icon_color: "Custom"
+            md_bg_color: "#e6d7b1"
+            text_color: "#6e512d"
