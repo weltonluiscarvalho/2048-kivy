@@ -120,8 +120,9 @@ class Board(MDRelativeLayout):
         self.cavalo = SoundLoader.load('sounds/cavalo.mp3')
         self.danca_gatinho = SoundLoader.load('sounds/danca_gatinho.mp3')
         self.popup = GameOverPopup()
-        self.popup.ids.new_game_button.bind(on_release=self.reset_game)
-        self.popup.ids.quit_game_button.bind(on_release=self.quit_game)
+        self.popup.ids.undo_button.bind(on_release=lambda args: self.on_popup_game_over("undo"))
+        self.popup.ids.new_game_button.bind(on_release=lambda args: self.on_popup_game_over("new_game"))
+        self.popup.ids.quit_game_button.bind(on_release=lambda args: self.on_popup_game_over("quit_game"))
         self.moves = []
         self.moves_count = 0
         self.do_moves_count = 0
@@ -143,6 +144,18 @@ class Board(MDRelativeLayout):
         self.insert_black_rectangles()
         new_piece = self.create_new_piece()
         self.insert_piece(new_piece)
+
+
+    def on_popup_game_over(self, button):
+        self.in_game= True
+        self.popup.dismiss()
+        if button == "undo":
+            self.undo_move()
+        elif button == "new_game":
+            self.reset_game()
+        else:
+            self.quit_game()
+
 
 
     def quit_game(self, *args):
@@ -637,9 +650,10 @@ class Board(MDRelativeLayout):
 
 
     def create_new_piece(self, *args):
-        # self.in_game = False
-        # self.popup.score = self.score
-        # self.popup.open()
+        if self.moves_count > 5:
+            self.in_game = False
+            self.popup.score = self.score
+            self.popup.open()
         free_positions = []
 
         for row, row_value in enumerate(self.positions):
