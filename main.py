@@ -1,8 +1,8 @@
 from kivymd.app import MDApp
 from kivy.core.window import Window
 from kivy.core.text import LabelBase
-from screen_items import Board
-from screens import GameScreenManager, BoardScreen
+from screens.screen_items import Board
+from screens.screens import GameScreenManager, BoardScreen
 
 Window.size = (400, 700)
 
