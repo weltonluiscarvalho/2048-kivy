@@ -15,60 +15,10 @@ from kivy.animation import Animation
 from random import choice
 from functools import partial, reduce
 from datetime import datetime
+from color_map import color_map
 
 
 scores = JsonStore('scores.json')
-
-color_map = {
-    "2": {
-        "font": "#6e512d",
-        "bg": "#e3e0d8", 
-    },
-    "4": {
-        "font": "#401d01",
-        "bg": "#e6d7b1", 
-    },
-    "8": {
-        "font": "white",
-        "bg": "#f5ba7a", 
-    },
-    "16": {
-        "font": "white",
-        "bg": "#f5a045", 
-    },
-    "32": {
-        "font": "white",
-        "bg": "#f58b7a", 
-    },
-    "64": {
-        "font": "white",
-        "bg": "#f55d45", 
-    },
-    "128": {
-        "font": "white",
-        "bg": "#f2e279", 
-    },
-    "256": {
-        "font": "white",
-        "bg": "#f0db56", 
-    },
-    "512": {
-        "font": "white",
-        "bg": "#f2d93d", 
-    },
-    "1024": {
-        "font": "white",
-        "bg": "#fadc1e", 
-    },
-    "2048": {
-        "font": "white",
-        "bg": "#ffdd05", 
-    },
-    "4096": {
-        "font": "white",
-        "bg": "#323232", 
-    },
-}
 
 class GameOverPopup(ModalView):
     score = NumericProperty(0)
@@ -89,7 +39,10 @@ class Piece(Label):
 
     def change_value(self, new_value):
         self.text = new_value
-        map_value = color_map.get(new_value)
+        if int(new_value) >= 4096:
+            map_value = "4096"
+        else:
+            map_value = color_map.get(new_value)
         self.color_bg = map_value.get('bg', 'white')
         self.color = map_value.get('font','black')
 
@@ -131,6 +84,8 @@ class Board(MDRelativeLayout):
         self.previous_do_move = 0
         best = reduce(max, map(lambda timestamp: scores.get(timestamp)['score'], scores.keys()), 0)
         self.best = best
+        app = App.get_running_app()
+        app.bind(on_stop=self.save_moves)
         Clock.schedule_once(self.start, -1)
         Window.bind(on_key_down=self.on_key_down)
 
@@ -157,9 +112,12 @@ class Board(MDRelativeLayout):
             self.quit_game()
 
 
+    def save_moves(self, *args):
+        scores.put(ceil(int(datetime.now().timestamp())), score=self.score, moves=self.moves)
+
 
     def quit_game(self, *args):
-        scores.put(ceil(int(datetime.now().timestamp())), score=self.score, moves=self.moves)
+        self.save_moves()
         app = App.get_running_app()
         app.stop()
 
@@ -290,14 +248,14 @@ class Board(MDRelativeLayout):
         new_value = int(piece_to_merge.text) * 2
         piece_to_merge.change_value(str(new_value))
         self.score += int(piece_merging.text)
-        # if piece_merging.text == "8":
-        #     if self.cavalo:
-        #         self.cavalo.play()
-        #         self.cavalo.seek(0)
-        # elif int(piece_merging.text) >= 16:
-        #     if self.nossa:
-        #         self.nossa.play()
-        #         self.nossa.seek(0)
+        if piece_merging.text == "8":
+            if self.cavalo:
+                self.cavalo.play()
+                self.cavalo.seek(0)
+        elif int(piece_merging.text) >= 16:
+            if self.nossa:
+                self.nossa.play()
+                self.nossa.seek(0)
         self.remove_widget(piece_merging)
         self.print_board()
 
@@ -650,10 +608,10 @@ class Board(MDRelativeLayout):
 
 
     def create_new_piece(self, *args):
-        if self.moves_count > 5:
-            self.in_game = False
-            self.popup.score = self.score
-            self.popup.open()
+        # if self.moves_count > 5:
+        #     self.in_game = False
+        #     self.popup.score = self.score
+        #     self.popup.open()
         free_positions = []
 
         for row, row_value in enumerate(self.positions):
