@@ -1,0 +1,132 @@
+<Board>
+    canvas:
+        Color:
+            rgb: 150/255,150/255,150/255
+        Rectangle:
+            pos: -self.height * .0075, -self.width * .0075
+            size: self.width * 1.015, self.width * 1.015
+    
+    PositionRectangle:
+        pos_hint:{'x': 0, 'y': 0}
+
+    PositionRectangle:
+        pos_hint:{'x': .25, 'y': 0}
+
+    PositionRectangle:
+        pos_hint:{'x': .5, 'y': 0}
+
+    PositionRectangle:
+        pos_hint:{'x': .75, 'y': 0}
+    
+    PositionRectangle:
+        pos_hint:{'x': 0, 'y': .25}
+
+    PositionRectangle:
+        pos_hint:{'x': .25, 'y': .25}
+
+    PositionRectangle:
+        pos_hint:{'x': .5, 'y': .25}
+
+    PositionRectangle:
+        pos_hint:{'x': .75, 'y': .25}
+
+    PositionRectangle:
+        pos_hint:{'x': 0, 'y': .5}
+
+    PositionRectangle:
+        pos_hint:{'x': .25, 'y': .5}
+
+    PositionRectangle:
+        pos_hint:{'x': .5, 'y': .5}
+
+    PositionRectangle:
+        pos_hint:{'x': .75, 'y': .5}
+
+    PositionRectangle:
+        pos_hint:{'x': 0, 'y': .75}
+
+    PositionRectangle:
+        pos_hint:{'x': .25, 'y': .75}
+
+    PositionRectangle:
+        pos_hint:{'x': .5, 'y': .75}
+
+    PositionRectangle:
+        pos_hint:{'x': .75, 'y': .75}
+
+<PositionRectangle@Widget>
+    size_hint: .25, .25 
+    canvas.before:
+        Color:
+            rgb: 180/255,180/255,180/255
+        RoundedRectangle:
+            pos: self.x + self.height * .03, self.y + self.width * .03
+            size: self.width * .94, self.height * .94
+            radius: [self.width / 8]
+
+<GameOverPopup>
+    id: game_over_popup
+    size_hint: 1, 1
+    background_color: 0, 0, 0, .5
+
+    MDRelativeLayout:
+        MDLabel:
+            text: "You Lose"
+            halign: 'center'
+            pos_hint: {'center_x': .5, 'center_y': .7}
+            theme_text_color: "Custom"
+            text_color: 1, 1, 1, 1
+
+        MDLabel:
+            id: score_label
+            halign: "center"
+            pos_hint: {'center_x': .5, 'center_y': .6}
+            theme_text_color: "Custom"
+            text_color: 1, 1, 1, 1
+
+        MDButton:
+            id: undo_button
+            pos_hint: {"center_x": .5, "center_y": .24}
+            style: "filled"
+            theme_bg_color: "Custom"
+            md_bg_color: "#e6d7b1"
+            theme_line_color: "Custom"
+            line_color: "#6e512d"
+
+            MDButtonIcon:
+                icon: "undo"
+                pos_hint: {"center_x": .5, "center_y": .5}
+                theme_text_color: "Custom"
+                text_color: "#6e512d"
+
+        MDButton:
+            id: new_game_button
+            style: "filled"
+            pos_hint: {'center_x': .5, 'center_y': .17}
+            theme_bg_color: "Custom"
+            md_bg_color: "#6e512d"
+
+            MDButtonText:
+                text: "New Game"
+                pos_hint: {'center_x': .5, 'center_y': .55}
+                font_style: "Title"
+                theme_font_name: "Custom"
+                font_name: "clear-sans"
+                theme_text_color: "Custom"
+                text_color: "#e6d7b1"
+
+        MDButton:
+            id: quit_game_button
+            style: "filled"
+            pos_hint: {'center_x': .5, 'center_y': .1}
+            theme_bg_color: "Custom"
+            md_bg_color: "#6e512d"
+
+            MDButtonText:
+                text: "Quit"
+                pos_hint: {'center_x': .5, 'center_y': .55}
+                font_style: "Title"
+                theme_font_name: "Custom"
+                font_name: "clear-sans"
+                theme_text_color: "Custom"
+                text_color: "#e6d7b1"

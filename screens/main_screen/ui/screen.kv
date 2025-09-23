@@ -1,0 +1,86 @@
+<MainScreen@Screen>
+    MDRelativeLayout:
+        theme_icon_color: "Custom"
+        md_bg_color: "#e3e0d8"
+
+        MDCard:
+            theme_bg_color: "Custom"
+            md_bg_color: '#DFB115'
+            size_hint: .38, None
+            height: self.width
+            pos_hint: {'center_x': .5, 'top': .90}
+            MDRelativeLayout:
+                MDLabel:
+                    id: label
+                    text: 'MEME'
+                    adaptive_size: True
+                    font_style: "Display"
+                    role: "small"
+                    color: "white"
+                    pos_hint: {'center_y': .70, 'center_x': .5}
+                    bold: True
+                MDLabel:
+                    id: label
+                    text: '2048'
+                    adaptive_size: True
+                    font_style: "Display"
+                    role: "small"
+                    color: "white"
+                    pos_hint: {'center_y': .40, 'center_x': .5}
+                    bold: True
+
+        MDButton:
+            id: new_game_button
+            style: "filled"
+            pos_hint: {'center_x': .5, 'center_y': .45}
+            theme_width: "Custom"
+            size_hint_x: .4
+            theme_bg_color: "Custom"
+            md_bg_color: "#6e512d"
+            on_release: root.manager.current = "board_screen"
+
+            MDButtonText:
+                text: "New Game"
+                pos_hint: {'center_x': .5, 'center_y': .55}
+                font_style: "Title"
+                theme_font_name: "Custom"
+                font_name: "clear-sans"
+                theme_text_color: "Custom"
+                text_color: "#e6d7b1"
+
+        MDButton:
+            id: continue_button
+            style: "filled"
+            pos_hint: {'center_x': .5, 'center_y': .375}
+            theme_width: "Custom"
+            size_hint_x: .4
+            theme_bg_color: "Custom"
+            md_bg_color: "#6e512d"
+
+            MDButtonText:
+                text: "Continue"
+                pos_hint: {'center_x': .5, 'center_y': .55}
+                font_style: "Title"
+                theme_font_name: "Custom"
+                font_name: "clear-sans"
+                theme_text_color: "Custom"
+                text_color: "#e6d7b1"
+
+        MDButton:
+            id: quit_game_button
+            style: "filled"
+            pos_hint: {'center_x': .5, 'center_y': .3}
+            theme_width: "Custom"
+            size_hint_x: .4
+            theme_bg_color: "Custom"
+            md_bg_color: "#6e512d"
+            on_release: app.stop()
+
+            MDButtonText:
+                text: "Quit"
+                pos_hint: {'center_x': .5, 'center_y': .55}
+                font_style: "Title"
+                theme_font_name: "Custom"
+                font_name: "clear-sans"
+                theme_text_color: "Custom"
+                text_color: "#e6d7b1"

@@ -1,0 +1,132 @@
+<BoardScreen@Screen>
+    MDRelativeLayout:
+        theme_bg_color: "Custom"
+        md_bg_color: "#e3e0d8"
+        MDCard:
+            id: score_card
+            theme_bg_color: "Custom"
+            md_bg_color: '#6e512d'
+            size_hint: .24, None
+            height: self.width
+            pos_hint: {'x': .03, 'top': .98}
+            MDRelativeLayout:
+                MDLabel:
+                    id: score_label
+                    text: 'SCORE'
+                    adaptive_size: True
+                    font_style: "Headline"
+                    role: "small"
+                    halign: "center"
+                    color: "white"
+                    pos_hint: {'top': .9, 'center_x': .5}
+                    bold: True
+                MDLabel:
+                    id: score_value
+                    text: str(board.score)
+                    adaptive_size: True
+                    font_style: "Headline"
+                    role: "small"
+                    halign: "center"
+                    color: "white"
+                    pos_hint: {'y': .15, 'center_x': .5}
+                    bold: True
+        MDCard:
+            theme_bg_color: "Custom"
+            md_bg_color: '#6e512d'
+            size_hint: .24, None
+            height: self.width / 2
+            pos_hint: {'x': .03, 'top': .83}
+            MDRelativeLayout:
+                MDIconButton:
+                    icon: "home"
+                    pos_hint:{'center_x': .5, 'center_y': .5 }
+                    theme_icon_color: 'Custom'
+                    icon_color: "white"
+                    icon_size: '35sp'
+                    on_release: root.manager.current = "main_screen"
+        MDCard:
+            theme_bg_color: "Custom"
+            md_bg_color: '#DFB115'
+            size_hint: .38, None
+            height: self.width
+            pos_hint: {'center_x': .5, 'top': .98}
+            MDRelativeLayout:
+                MDLabel:
+                    id: label
+                    text: 'MEME'
+                    adaptive_size: True
+                    font_style: "Display"
+                    role: "small"
+                    color: "white"
+                    pos_hint: {'center_y': .70, 'center_x': .5}
+                    bold: True
+                MDLabel:
+                    id: label
+                    text: '2048'
+                    adaptive_size: True
+                    font_style: "Display"
+                    role: "small"
+                    color: "white"
+                    pos_hint: {'center_y': .40, 'center_x': .5}
+                    bold: True
+
+        MDCard:
+            theme_bg_color: "Custom"
+            md_bg_color: '#6e512d'
+            size_hint: .24, None
+            height: self.width
+            pos_hint: {'right': .97, 'top': .98}
+            MDRelativeLayout:
+                MDLabel:
+                    id: best_label
+                    text: 'BEST'
+                    adaptive_size: True
+                    font_style: "Headline"
+                    role: "small"
+                    color: "white"
+                    pos_hint: {'top': .9, 'center_x': .5}
+                    bold: True
+                MDLabel:
+                    id: best_value
+                    text: str(board.best)
+                    adaptive_size: True
+                    font_style: "Headline"
+                    role: "small"
+                    halign: "center"
+                    color: "white"
+                    pos_hint: {'y': .15, 'center_x': .5}
+                    bold: True
+        MDCard:
+            theme_bg_color: "Custom"
+            md_bg_color: '#6e512d'
+            size_hint: .24, None
+            height: self.width / 2
+            pos_hint: {'right': .97, 'top': .83}
+            MDRelativeLayout:
+                MDIconButton:
+                    icon: "cog"
+                    pos_hint:{'center_x': .5, 'center_y': .5 }
+                    theme_icon_color: 'Custom'
+                    icon_color: "white"
+                    icon_size: '35sp'
+
+        MDButton:
+            style: "filled"
+            pos_hint: {"center_x": .5, "center_y": .7}
+            theme_bg_color: "Custom"
+            md_bg_color: "#e6d7b1"
+            theme_line_color: "Custom"
+            line_color: "#6e512d"
+            on_release: board.undo_move()
+
+            MDButtonIcon:
+                icon: "undo"
+                pos_hint: {"center_x": .5, "center_y": .5}
+                theme_text_color: "Custom"
+                text_color: "#6e512d"
+
+        Board:
+            id: board
+            pos_hint: {"center_x": .5, "center_y": .4}
+            size_hint: .80, None
+            height: self.width
