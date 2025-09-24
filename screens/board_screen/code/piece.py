@@ -17,7 +17,7 @@ class Piece(Label):
     def change_value(self, new_value):
         self.value = new_value
         if new_value >= 4096:
-            map_value = "4096"
+            map_value = color_map.get("4096")
         else:
             map_value = color_map.get(str(new_value))
         self.color_bg = map_value.get('bg', 'white')
@@ -26,5 +26,5 @@ class Piece(Label):
     def on_value(self, instance, value):
         self.text = str(value)
 
-    def __repr__(self) -> str:
-        return str(self.value)
+    # def __repr__(self) -> str:
+    #     return str(self.value)
