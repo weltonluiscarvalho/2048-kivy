@@ -2,7 +2,10 @@ from kivymd.app import MDApp
 from kivy.core.window import Window
 from kivy.core.text import LabelBase
 from kivy.lang.builder import Builder
+<<<<<<< HEAD
 from database import game_db
+=======
+>>>>>>> 2668227adaaf4c8628a12a698949872439d71da7
 
 from screens.board_screen.code import BoardScreen
 from screens.screen_manager import GameScreenManager

@@ -15,11 +15,12 @@ class Piece(Label):
             map_value = color_map.get("4096")
         else:
             map_value = color_map.get(str(value))
+
         self.color_bg = map_value.get('bg', 'white')
         self.color = map_value.get('font','black')
+
         if value >= 16384:
             self.font_size= f"{self.width / 4}sp"
-            
 
     def change_value(self, new_value):
         self.value = new_value
