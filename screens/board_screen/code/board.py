@@ -1,4 +1,5 @@
 from copy import copy, deepcopy
+import enum
 from math import ceil
 from kivy.app import App
 from kivy.uix.modalview import ModalView
@@ -12,6 +13,7 @@ from kivy.animation import Animation
 from random import choice
 from functools import partial, reduce
 from datetime import datetime
+from database import game_db
 
 from . import Piece
 
@@ -30,8 +32,10 @@ class Board(MDRelativeLayout):
     def __init__(self, **kwargs):
         super(Board, self).__init__(**kwargs)
         self.positions = []
-        self.reset_state()
-        self.initialize_board()
+        self.in_game = False
+        self.in_animation = False
+        # self.reset_state()
+        # self.initialize_board()
         self.load_sounds()
         self.config_game_over_popup()
         App.get_running_app().bind(on_stop=self.save_moves)
@@ -59,6 +63,7 @@ class Board(MDRelativeLayout):
         self.sounds["danca_gatinho"] = SoundLoader.load('assets/sounds/danca_gatinho.mp3') 
 
     def initialize_board(self):
+        self.game_id = game_db.insert_game()
         self.reset_state()
         new_piece = self.create_new_piece()
         self.insert_piece(new_piece)
@@ -82,8 +87,11 @@ class Board(MDRelativeLayout):
 
 
     def save_moves(self, *args):
-        print(self.moves)
         scores.put(ceil(int(datetime.now().timestamp())), score=self.score, moves=self.moves)
+        for row, row_value in enumerate(self.positions):
+            for column, piece in enumerate(row_value):
+                if piece:
+                    game_db.insert_board(self.game_id, row, column, piece.value)
 
 
     def save_state(self):
@@ -230,7 +238,6 @@ class Board(MDRelativeLayout):
     def get_piece_at_position(self, row, column):
         for item in self.children:
             if type(item) is Piece and item.coords[0] == row and item.coords[1] == column:
-                print(f'piece {item} in position {item.coords} will be returned')
                 return item
 
 
@@ -289,103 +296,66 @@ class Board(MDRelativeLayout):
         if self.in_animation or not self.in_game:
             return
 
-        move_to_undo = None
+        move_to_undo = game_db.select_last_do_move(self.game_id, self.do_moves_count)
         
-        moves_able_to_undo = filter(lambda move: move.get("move_type") == "do" and move.get("do_move_number") == self.do_moves_count, self.moves)
-        move_to_undo_number = reduce(max, map(lambda move: move.get("move_number"), moves_able_to_undo), 0)
-        for move in self.moves:
-            if move.get("move_number") == move_to_undo_number:
-                move_to_undo = move
-                break
-            
         if move_to_undo:
-
             # remove created piece first
-            created_piece = move_to_undo.get("created_piece")
-            created_piece_position = created_piece.get("position").get("row"), created_piece.get("position").get("column")
-            removed_piece = self.positions[created_piece_position[0]][created_piece_position[1]]
-            self.positions[created_piece_position[0]][created_piece_position[1]] = 0
+            removed_piece = self.positions[move_to_undo['row']][move_to_undo['column']]
+            self.positions[move_to_undo['row']][move_to_undo['column']] = 0
             self.remove_widget(removed_piece)
 
-            move_direction = move_to_undo.get("direction")
-            unmerged_pieces = []
-            unmoved_pieces = []
+            #undos
+            move_direction = move_to_undo["direction"]
+            moves = game_db.select_pieces_move_from_move(self.game_id, move_to_undo['move_number'])
 
-            if move_direction in ("up", "right"):
-                range_initial_value = 0
-                range_final_value = self.num_rows
-                range_step_value = 1
+            if moves:
+                if move_direction in ("up", "right"):
+                    range_initial_value = 0
+                    range_final_value = self.num_rows
+                    range_step_value = 1
 
-            else: 
-                range_initial_value = self.num_rows - 1
-                range_final_value = -1
-                range_step_value = -1
+                else: 
+                    range_initial_value = self.num_rows - 1
+                    range_final_value = -1
+                    range_step_value = -1
 
-            if move_direction in ("up", "down"):
-                line_type = "row"
+                if move_direction in ("up", "down"):
+                    line_type = "row"
 
-            else:
-                line_type = "column"
+                else:
+                    line_type = "column"
 
-            for line in range(range_initial_value, range_final_value, range_step_value):
+                for line in range(range_initial_value, range_final_value, range_step_value):
 
-                line_moved_pieces = [piece for piece in move_to_undo.get("pieces_moved") if piece.get("new_position").get(line_type) == line]
-                line_merges = [piece for piece in move_to_undo.get("merges") if piece.get("piece_merged_position").get(line_type) == line]
+                    line_merges = [move for move in moves if move["final_position"][line_type] == line and move['is_merge']]
+                    line_moved_pieces = [move for move in moves if move["final_position"][line_type] == line and not move['is_merge']]
 
-                #undo merges
-                for merge in line_merges:
+                    # undo merges
+                    for move in line_merges:
+                        piece_to_unmerge = self.positions[move['final_position']['row']][move['final_position']['column']]
+                        self.unmerge_piece(piece_to_unmerge, (move['initial_position']['row'], move['initial_position']['column']))
 
-                    merged_position = merge.get("piece_merged_position").get("row"), merge.get("piece_merged_position").get("column")
-                    merging_position = merge.get("piece_merging_position").get("row"), merge.get("piece_merging_position").get("column")
+                    # undo moves
+                    for move in line_moved_pieces:
+                        old_position = move["initial_position"]["row"], move["initial_position"]["column"]
+                        new_position = move["final_position"]["row"], move["final_position"]["column"]
 
-                    piece = self.positions[merged_position[0]][merged_position[1]]
-                    self.unmerge_piece(piece, merging_position)
-                    unmerge = {
-                        "old_value": merge.get("new_value"),
-                        "new_value": merge.get("old_value"),
-                        "old_position": {
-                            "row": merged_position[0],
-                            "column": merged_position[1]
-                        },
-                        "new_position": {
-                            "row": merging_position[0],
-                            "column": merging_position[1]
-                        }
-                    }
-                    unmerged_pieces.append(unmerge)
+                        piece = self.positions[new_position[0]][new_position[1]]
+                        self.set_piece_position(piece, old_position)
 
-                # undo moves
-                for moved_piece in line_moved_pieces:
-                    old_position = moved_piece.get("old_position").get("row"), moved_piece.get("old_position").get("column")
-                    new_position = moved_piece.get("new_position").get("row"), moved_piece.get("new_position").get("column")
-
-                    piece = self.positions[new_position[0]][new_position[1]]
-                    self.set_piece_position(piece, old_position)
-                    unmove = {
-                        "piece_value": moved_piece.get("piece_value"),
-                        "old_position": {
-                            "row": new_position[0],
-                            "column": new_position[1],
-                        },
-                        "new_position": {
-                            "row": old_position[0],
-                            "column": old_position[1]
-                        }
-                    }
-                    unmoved_pieces.append(unmove)
-
+            
             self.undo_moves_count += 1
             self.do_moves_count -= 1
             self.moves_count += 1
             self.set_in_animation_true()
-            board_before, board_after = move_to_undo.get("board_after"), move_to_undo.get("board_before")
-            Clock.schedule_once(partial(self.add_undo_move, 
-                                        board_before=board_before, 
-                                        board_after=board_after, 
-                                        move_type="undo", 
-                                        removed_piece=removed_piece, 
-                                        unmerged_pieces=unmerged_pieces, 
-                                        unmoved_pieces=unmoved_pieces), .16)
+            game_db.insert_move(self.moves_count, 
+                                self.game_id, 
+                                "undo", 
+                                None, 
+                                self.do_moves_count, 
+                                self.score, 
+                                move_to_undo['row'], 
+                                move_to_undo['column'])
             Clock.schedule_once(self.set_in_animation_false, .17)
 
 
@@ -417,71 +387,30 @@ class Board(MDRelativeLayout):
 
         print()
 
-    def add_do_move(self, *args, board_before, direction, move_type, merged_pieces, moved_pieces, created_piece):
+    def add_do_move(self, direction, move_type, moved_pieces, created_piece):
 
-        board_after = []
-        for row, row_value in enumerate(self.positions):
-            board_after_column = []
-            for piece in row_value:
-                 board_after_column.append(piece.value if piece else 0)
-            board_after.append(board_after_column)
+        game_db.insert_move(self.moves_count, 
+                            self.game_id, 
+                            move_type, 
+                            direction, 
+                            self.do_moves_count, 
+                            self.score, 
+                            created_piece.coords[0], 
+                            created_piece.coords[1])
 
-        print(f'o board after vai ficar assim {board_after}')
-        
-        move = {
-            "move_number": self.moves_count,
-            "do_move_number": self.do_moves_count,
-            "move_score": self.score,
-            "direction": direction,
-            "move_type": move_type,
-            "board_before": board_before,
-            "board_after": board_after,
-            "merges": merged_pieces,
-            "pieces_moved": moved_pieces,
-            "created_piece": {
-                "value": created_piece.value,
-                "position": {
-                    "row": created_piece.coords[0],
-                    "column": created_piece.coords[1]
-                }
-            }
-        }
-
-
-        self.moves.append(move)
-
-    def add_undo_move(self, *args, board_before, board_after, move_type, unmerged_pieces, unmoved_pieces, removed_piece):
-        move = {
-            "move_number": self.moves_count,
-            "undo_move_number": self.undo_moves_count,
-            "move_score": self.score,
-            "move_type": move_type,
-            "board_before": board_before,
-            "board_after": board_after,
-            "unmerges": unmerged_pieces,
-            "pieces_unmoved": unmoved_pieces,
-            "removed_piece": {
-                "value": removed_piece.value,
-                "position": {
-                    "row": removed_piece.coords[0],
-                    "column": removed_piece.coords[1]
-                }
-            }
-        }
-
-        self.moves.append(move)
+        for piece in moved_pieces:
+            game_db.insert_piece_move(self.moves_count, 
+                                      self.game_id, 
+                                      piece['old_position']['row'], 
+                                      piece['old_position']['column'], 
+                                      piece['new_position']['row'], 
+                                      piece['new_position']['column'], 
+                                      piece['piece_value'], 
+                                      piece['is_merge'])
 
 
     def move(self, move_direction):
 
-        board_before = []
-        for row, row_value in enumerate(self.positions):
-            board_before_column = []
-            for piece in row_value:
-                 board_before_column.append(piece.value if piece else 0)
-            board_before.append(board_before_column)
-
-        merged_pieces = []
         moved_pieces = []
         piece_moved = False
 
@@ -531,35 +460,20 @@ class Board(MDRelativeLayout):
 
                 if piece.coords is not next_position:
                     piece_moved = True
-                    if merge:
-                        new_merge = {
-                            "old_value": piece.value,
-                            "new_value": piece.value * 2,
-                            "piece_merging_position": {
-                                "row": piece.coords[0],
-                                "column": piece.coords[1]
-                            },
-                            "piece_merged_position": {
-                                "row": next_position[0],
-                                "column": next_position[1]
-                            }
-                        }
+                    new_move = {
+                        "piece_value": piece.value,
+                        "old_position": {
+                            "row": piece.coords[0],
+                            "column": piece.coords[1]
+                        },
+                        "new_position": {
+                            "row": next_position[0],
+                            "column": next_position[1]
+                        },
+                        "is_merge": merge
+                    }
 
-                        merged_pieces.append(new_merge)
-                    else:
-                        new_move = {
-                            "piece_value": piece.value,
-                            "old_position": {
-                                "row": piece.coords[0],
-                                "column": piece.coords[1]
-                            },
-                            "new_position": {
-                                "row": next_position[0],
-                                "column": next_position[1]
-                            }
-                        }
-
-                        moved_pieces.append(new_move)
+                    moved_pieces.append(new_move)
 
                     self.set_piece_position(piece, next_position, merge=merge)
 
@@ -575,11 +489,9 @@ class Board(MDRelativeLayout):
             self.do_moves_count += 1
             Clock.schedule_once(partial(self.insert_piece, new_piece), .15)
             Clock.schedule_once(partial(self.add_do_move, 
-                                        board_before=board_before, 
                                         direction=move_direction, 
                                         move_type="do", 
                                         created_piece=new_piece, 
-                                        merged_pieces=merged_pieces, 
                                         moved_pieces=moved_pieces), .16)
             Clock.schedule_once(self.set_in_animation_false, .17)
 
@@ -607,8 +519,13 @@ class Board(MDRelativeLayout):
         #     self.in_game = False
         #     self.popup.ids.score_label.text = str(self.score)
         #     self.popup.open()
+
         self.add_widget(new_piece)
         self.positions[new_piece.coords[0]][new_piece.coords[1]] = new_piece
+        ### DB
+        if self.moves_count == 0:
+            game_db.insert_move(self.moves_count, self.game_id, None, None, self.do_moves_count, 0, new_piece.coords[0], new_piece.coords[1])
+        ####
 
         free_positions = []
 

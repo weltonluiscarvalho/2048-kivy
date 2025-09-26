@@ -11,8 +11,15 @@ class Piece(Label):
     def __init__(self, value, **kwargs):
         super().__init__(**kwargs)
         self.value = value
-        self.color_bg = color_map.get(str(value)).get('bg', 'white')
-        self.color = color_map.get(str(value)).get('font','black')
+        if value >= 4096:
+            map_value = color_map.get("4096")
+        else:
+            map_value = color_map.get(str(value))
+        self.color_bg = map_value.get('bg', 'white')
+        self.color = map_value.get('font','black')
+        if value >= 16384:
+            self.font_size= f"{self.width / 4}sp"
+            
 
     def change_value(self, new_value):
         self.value = new_value
@@ -22,6 +29,8 @@ class Piece(Label):
             map_value = color_map.get(str(new_value))
         self.color_bg = map_value.get('bg', 'white')
         self.color = map_value.get('font','black')
+        if new_value >= 16384:
+            self.font_size= f"{self.width / 4}sp"
 
     def on_value(self, instance, value):
         self.text = str(value)
