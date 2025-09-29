@@ -26,6 +26,99 @@ def close_connection():
     if CONN:
         CONN.close()
 
+
+def select_board_pieces(game_id):
+    global CONN, CURSOR
+
+    if not CONN and not CURSOR:
+        open_connection()
+
+    res = CURSOR.execute(
+        '''
+        SELECT position_id, value FROM BOARD_PIECE WHERE game_id = ?
+        ''',(game_id,)
+    )
+
+    board_pieces = res.fetchall()
+
+    pieces = []
+
+    for piece in board_pieces:
+        position = CURSOR.execute(
+             '''
+             SELECT row, column FROM POSITION WHERE position_id = ?
+             ''', (piece[0],)
+        )
+
+        row, column = position.fetchone()
+
+        piece = {
+            "value": piece[1],
+            "row": row,
+            "column": column
+        }
+
+        pieces.append(piece)
+
+    return pieces
+
+
+def update_game(game_id, score):
+    global CONN, CURSOR
+
+    if not CONN and not CURSOR:
+        open_connection()
+
+    timestamp = ceil(int(datetime.now().timestamp()))
+
+    CURSOR.execute(
+        '''
+        UPDATE GAME set final_score = ?, final_date_timestamp = ? WHERE game_id == ?
+        ''', (score, timestamp, game_id)
+    )
+
+    CONN.commit()
+
+
+
+def select_last_game():
+    global CONN, CURSOR
+
+    if not CONN and not CURSOR:
+        open_connection()
+
+    res = CURSOR.execute(
+         '''
+         SELECT game_id, final_score FROM GAME ORDER BY final_date_timestamp DESC
+         '''
+    )
+
+    last_game = res.fetchone()
+
+    if not last_game:
+        return None
+
+    res_move = CURSOR.execute(
+        '''
+        SELECT move_number, type_number FROM MOVE WHERE game_id = ? and type = "do" ORDER BY move_number DESC LIMIT 1
+        ''', (last_game[0],)
+    )
+
+    move = res_move.fetchone()
+    print(move)
+
+    game = {
+        "game_id": last_game[0],
+        "score": last_game[1],
+        "moves_count": move[0],
+        "do_moves_count": move[1]
+    }
+
+    print(game)
+
+    return game
+
+
 def select_pieces_move_from_move(game_id, move_number):
     global CONN, CURSOR
 
@@ -86,6 +179,8 @@ def select_last_do_move(game_id, type_number):
     if not CONN and not CURSOR:
         open_connection()
 
+
+    print(f"procurando gameid {game_id} do_move {type_number}")
     res = CURSOR.execute(
          '''
          SELECT move_number, direction, piece_position_id FROM MOVE WHERE game_id = ? and type_number = ? and type = ? ORDER BY move_number DESC
@@ -112,9 +207,25 @@ def select_last_do_move(game_id, type_number):
         "row": row,
         "column": column
     }
+
+def delete_board_pieces(game_id):
+    global CONN, CURSOR
+
+    if not CONN and not CURSOR:
+        open_connection()
+
+    res = CURSOR.execute(
+         '''
+         DELETE FROM BOARD_PIECE WHERE game_id = ?
+         ''', (game_id,)
+    )
+
+    print(res)
+
+    CONN.commit()
     
 
-def insert_board(game_id, row, column, value):
+def insert_board_piece(game_id, row, column, value):
     global CONN, CURSOR
 
     if not CONN and not CURSOR:
@@ -130,7 +241,7 @@ def insert_board(game_id, row, column, value):
 
     CURSOR.execute(
         '''
-        INSERT INTO BOARD (game_id, position_id, value)
+        INSERT INTO BOARD_PIECE (game_id, position_id, value)
         VALUES (?, ?, ?)
         ''', (game_id, position_id, value)
     )
@@ -292,7 +403,7 @@ def create_tables():
     )
 
     CURSOR.execute(
-        "CREATE TABLE IF NOT EXISTS BOARD (\
+        "CREATE TABLE IF NOT EXISTS BOARD_PIECE (\
         game_id TEXT REFERENCES GAME(game_id),\
         position_id INTEGER REFERENCES POSITION(position_id),\
         value INTEGER,\

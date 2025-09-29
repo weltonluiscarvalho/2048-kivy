@@ -2,10 +2,7 @@ from kivymd.app import MDApp
 from kivy.core.window import Window
 from kivy.core.text import LabelBase
 from kivy.lang.builder import Builder
-<<<<<<< HEAD
 from database import game_db
-=======
->>>>>>> 2668227adaaf4c8628a12a698949872439d71da7
 
 from screens.board_screen.code import BoardScreen
 from screens.screen_manager import GameScreenManager
@@ -13,12 +10,10 @@ from screens.screen_manager import GameScreenManager
 Window.size = (400, 700)
 
 class GameApp(MDApp):
-
     def on_start(self):
         game_db.open_connection()
         game_db.create_tables()
         game_db.populate_position()
-        return super().on_start()
 
     def on_stop(self):
         game_db.close_connection()
